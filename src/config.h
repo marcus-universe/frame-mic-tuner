@@ -15,6 +15,7 @@
 enum class PanelTab {
     Quick,  ///< かんたん（プリセット）。キーの値は "quick"
     Fine,   ///< 細かく調整（1 つずつの設定）。キーの値は "fine"
+    Mix,    ///< ミックス（仮想出力）。キーの値は "mix"
 };
 
 /**
@@ -33,6 +34,8 @@ struct Config {
     // 音の出口ごとの Frame マイクの設定（キーは出口のキー。outputs.h の endpointKey）。キーは outputs
     std::map<std::string, OutputProfile> outputs;
     bool outputsSaved = false;  ///< ファイルに outputs があった（無ければ前の版からなので、今の設定を今の出口へ移す）
+    bool mixEnabled = false;                 ///< PC のストリーミングマイクへミックスを流す（frame-mic.mix）
+    std::vector<MixChannel> mixChannels;     ///< 仮想出力。キーは mix_channels
 };
 
 /** 画面の文字に使うフォント（Noto Sans CJK。読めなければ fontconfig で探す）。 */

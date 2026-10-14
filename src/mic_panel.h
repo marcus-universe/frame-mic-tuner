@@ -33,6 +33,7 @@ enum class PanelAction {
     OpenMicPicker,    ///< 「マイク」の欄（使うマイクの画面を重ねる）
     TabQuick,         ///< 「かんたん」
     TabFine,          ///< 「細かく調整」
+    TabMix,           ///< 「ミックス」
     Earphone,         ///< プリセット: イヤホン・ヘッドホン（エコー除去オフ・ノイズ除去オフ）
     Speaker,          ///< プリセット: Frame のスピーカー（エコー除去オン・ノイズ除去オフ）
     EchoOn,
@@ -67,6 +68,16 @@ enum class PanelAction {
     AppsConfirmCancel,///< 確認の「やめる」（パネルの中で戻る）
     AppsConfirmLaunch,///< 確認の「Konsole で開く」（key = 呼び名。空ならメニュー）
     // ---- 一番下の行 ----
+    MixOn,            ///< ミックスを PC のマイクへ流す
+    MixOff,           ///< 流すのをやめる
+    MixMicSlider,     ///< マイクの音量（key = ノード名）
+    MixToMicSlider,   ///< チャンネルをマイクへ（index = チャンネル、key = ノード名）
+    MixToPhonesSlider,///< チャンネルをヘッドホンへ
+    MixAdd,           ///< チャンネルを足す（候補の画面を開く）
+    MixDelete,        ///< チャンネルを消す（key = id。2 回目で確定）
+    MixRename,        ///< 名前を変える（key = id）
+    MixSuggest,       ///< 候補の名前（key = 名前）
+    MixCustom,        ///< キーボードで名前を付ける
     LanguageJa,
     LanguageEn,
     LanguageSc,
@@ -102,6 +113,7 @@ enum class PanelOverlay {
     MicPicker,     ///< 使うマイク
     AppsList,      ///< ささけんの Frame アプリ（アプリと更新の画面から）
     AppsConfirm,   ///< 入れる前の確認（実行するコマンドを見せる）
+    MixSuggest,    ///< ミックスのチャンネル名を選ぶ
 };
 
 /** 描くときに渡す、今の状態（メインが作る）。 */
@@ -222,6 +234,31 @@ public:
 
     /** @return バーをドラッグしている間 true */
     bool dragging() const { return dragAction_ != PanelAction::None; }
+    /** @return ドラッグ中の操作（ドラッグしていなければ None） */
+    PanelAction dragAction() const { return dragAction_; }
+
+    /**
+     * ミックスのバーをドラッグ中なら、そのノード名とパーセントを返す。
+     * @param node ノード名
+     * @param percent 0〜150
+     * @return ミックスのバーなら true
+     */
+    bool mixDrag(std::string& node, double& percent) const;
+
+    /**
+     * ミックスの音量を、読み直しが追いつくまで表示に使う。
+     * @param node ノード名
+     * @param percent 0〜150
+     * @param until この時刻まで
+     */
+    void holdMixVolume(const std::string& node, double percent, double until);
+
+    /**
+     * 名前のエラーをしばらく出す。
+     * @param text 文言
+     * @param until この時刻まで
+     */
+    void setNameError(const std::string& text, double until);
 
     /**
      * バーの値を書き込みに出した直後、読み直しが追いつくまでの間、その値を表示に使う（表示が戻ってちらつかないように）。
@@ -307,6 +344,11 @@ public:
      * @param overlay 重ねた画面
      */
     void showForPreview(PanelView view, PanelOverlay overlay);
+    /** 重ねた画面を閉じる（名前を決めたあとなど）。 */
+    void closeOverlay() {
+        overlay_ = PanelOverlay::None;
+        listScroll_ = 0;
+    }
     /**
      * 一覧のスクロールを決める（大きければいちばん下）。
      * @param px スクロール（px）
@@ -342,6 +384,8 @@ private:
         double x0, x1;      ///< 溝の左端・右端（px）
         double min, max;    ///< 値の範囲
         double cy;          ///< 溝の縦の真ん中（px）
+        int index = 0;      ///< 同じ操作のバーを区別する（チャンネルの番号）
+        std::string node;   ///< ミックスの音量ノード名
     };
 
     const FontSet& fonts_;
@@ -365,7 +409,15 @@ private:
     double updateArmedUntil_ = 0.0;
     double now_ = 0.0;             ///< tick() で知らされた時刻
     PanelAction dragAction_ = PanelAction::None;
+    int dragIndex_ = 0;
     double dragValue_ = 0.0;
+    std::string holdMixNode_;
+    double holdMixPercent_ = 100.0;
+    double holdMixUntil_ = -1.0;
+    std::string deleteArmed_;       ///< 消す確認中のチャンネル id
+    double deleteArmedUntil_ = 0.0;
+    std::string nameError_;
+    double nameErrorUntil_ = 0.0;
     double baseVad_ = 23.0;        ///< 最後に描いたときのバーの元の値（今の出口なら読んだ値、ほかは覚えた値）
     double baseGrace_ = 500.0;
     double holdVad_ = 0.0;
@@ -438,6 +490,8 @@ private:
     void drawUpdateBox(const frame_ui::Canvas& ui, const UiText& t, frame_ui::Lang lang, const Config& config,
                        const frame_updater::UpdateStatus& update, frame_ui::Rect box);
     void drawFooter(const frame_ui::Canvas& ui, const UiText& t, const Config& config, const MicState& state);
+    void drawMix(const frame_ui::Canvas& ui, const UiText& t, const Config& config, const PanelModel& model);
+    void drawMixSuggest(const frame_ui::Canvas& ui, const UiText& t, const Config& config);
     void drawOutputPicker(const frame_ui::Canvas& ui, const UiText& t, const Config& config, const PanelModel& model);
     void drawMicPicker(const frame_ui::Canvas& ui, const UiText& t, const PanelModel& model);
     /** アプリと更新の画面の右のカード（いっしょに使うアプリと、一覧を開く行）。 */

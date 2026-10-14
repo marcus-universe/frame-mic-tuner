@@ -2,6 +2,7 @@
 // 外部コマンドは固定の引数だけで呼ぶ。PipeWire・WirePlumber の再起動はしない。
 #pragma once
 
+#include "mix_channels.h"
 #include "outputs.h"
 
 #include <cstdint>
@@ -78,6 +79,7 @@ enum class MicError {
     WriteMuteOn,     ///< ミュートできない（wpctl set-mute ... 1）
     WriteOutput,     ///< 音の出口を切り替えられない（wpctl set-default）
     WriteInput,      ///< 使うマイクを切り替えられない（wpctl set-default）
+    WriteMix,        ///< ミックスの起動・チャンネル・音量に失敗
 };
 
 /** ノイズ除去の段の今の値（pw-dump ns_capture から読む）。 */
@@ -107,6 +109,7 @@ struct MicState {
     NsParams nsParams;          ///< ノイズ除去の強さ
     bool nsApplied = true;      ///< ノイズ除去の強さの「かけたい値」を今のノードにかけ終えている（かけたい値が無いときも true）
     AudioDevices devices;       ///< 音の出口とマイクの一覧と、今の既定
+    MixGraph mix;               ///< ミックス（仮想出力と、PC へ流しているか）
     MicError readError = MicError::None;   ///< 直近の読み取りの失敗
     MicError writeError = MicError::None;  ///< 直近の書き込みの失敗（次に成功するまで残す）
     uint64_t writesDone = 0;    ///< この状態を覚えたときに終わっていた書き込みの数（受付番号と比べる。描き直しの判定には使わない）

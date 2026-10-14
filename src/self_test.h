@@ -12,3 +12,9 @@ using Expect = std::function<void(const char*, bool)>;
  * @param expect 結果を出す関数
  */
 void outputSelfTests(const Expect& expect);
+
+/**
+ * ミックスの確かめ（名前・個数・pw-dump の読み取り・設定ファイル）。外部コマンドは呼ばない。
+ * @param expect 結果を出す関数
+ */
+void mixSelfTests(const Expect& expect);

@@ -1,6 +1,8 @@
 // ワーカースレッドの実装。
 #include "mic_worker.h"
 
+#include "mix_channels.h"
+
 #include <signal.h>
 
 #include <algorithm>
@@ -95,10 +97,11 @@ uint64_t MicWorker::request(MicCommand command) {
     uint64_t ticket = 0;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (command.kind == MicCommand::Kind::SetNsParams) {
+        if (command.kind == MicCommand::Kind::SetNsParams || command.kind == MicCommand::Kind::SetMixVolume) {
             // バーのドラッグ中の連打は、まだ実行していない前の値を捨てて最後の値だけにする（捨てた分は終わった扱い）
-            const auto end = std::remove_if(queue_.begin(), queue_.end(), [](const MicCommand& c) {
-                return c.kind == MicCommand::Kind::SetNsParams;
+            const auto end = std::remove_if(queue_.begin(), queue_.end(), [&](const MicCommand& c) {
+                if (command.kind == MicCommand::Kind::SetNsParams) return c.kind == MicCommand::Kind::SetNsParams;
+                return c.kind == MicCommand::Kind::SetMixVolume && c.nodeName == command.nodeName;
             });
             completed_ += static_cast<uint64_t>(queue_.end() - end);
             queue_.erase(end, queue_.end());
@@ -137,6 +140,66 @@ uint64_t MicWorker::version() const {
     return version_;
 }
 
+namespace {
+
+std::vector<MixChannel> channelsFromBlob(const std::string& blob) {
+    std::vector<MixChannel> channels;
+    size_t pos = 0;
+    while (pos < blob.size()) {
+        size_t end = blob.find('\n', pos);
+        if (end == std::string::npos) end = blob.size();
+        const std::string line = blob.substr(pos, end - pos);
+        const size_t tab = line.find('\t');
+        if (tab != std::string::npos) channels.push_back({line.substr(0, tab), line.substr(tab + 1)});
+        pos = end + 1;
+    }
+    return channels;
+}
+
+bool applyMix(const MicCommand& command) {
+    std::string error;
+    switch (command.kind) {
+        case MicCommand::Kind::AddChannel: {
+            if (!writeChannelNameFile(command.nodeName, command.text, error)) return false;
+            if (command.value && !setMixCoreRunning(true)) return false;
+            if (!startMixChannel(command.nodeName)) return false;
+            int toMic = -1;
+            int toPhones = -1;
+            if (waitForMixNode(channelToMicNode(command.nodeName), toMic)) writeMixVolume(toMic, kMixDefaultToMic);
+            if (waitForMixNode(channelToPhonesNode(command.nodeName), toPhones)) writeMixVolume(toPhones, kMixDefaultPhones);
+            return true;
+        }
+        case MicCommand::Kind::RenameChannel:
+            if (!writeChannelNameFile(command.nodeName, command.text, error)) return false;
+            return restartMixChannel(command.nodeName);
+        case MicCommand::Kind::RemoveChannel: {
+            const bool stopped = stopMixChannel(command.nodeName);
+            removeChannelNameFile(command.nodeName);
+            return stopped;
+        }
+        case MicCommand::Kind::MixEnable: {
+            const std::vector<MixChannel> channels = channelsFromBlob(command.text);
+            for (const MixChannel& channel : channels) {
+                if (!writeChannelNameFile(channel.id, channel.name, error)) return false;
+            }
+            if (command.value) {
+                if (!setMixCoreRunning(true)) return false;
+                for (const MixChannel& channel : channels) {
+                    if (!startMixChannel(channel.id)) return false;
+                }
+                return writeMixEnabled(true);
+            }
+            const bool setting = writeMixEnabled(false);
+            const bool core = setMixCoreRunning(false);
+            return setting && core;
+        }
+        case MicCommand::Kind::SetMixVolume: return writeMixVolume(command.nodeId, command.vad);
+        default: return false;
+    }
+}
+
+}  // namespace
+
 bool MicWorker::execute(const MicCommand& command, int nodeId) {
     switch (command.kind) {
         case MicCommand::Kind::SetEcho: return writeSetting(kEchoCancelKey, command.value);
@@ -149,6 +212,11 @@ bool MicWorker::execute(const MicCommand& command, int nodeId) {
         case MicCommand::Kind::SetMute: return writeMute(command.value);
         case MicCommand::Kind::SetDefaultOutput: return writeDefaultNode(command.nodeId, command.nodeName, true);
         case MicCommand::Kind::SetDefaultInput: return writeDefaultNode(command.nodeId, command.nodeName, false);
+        case MicCommand::Kind::MixEnable:
+        case MicCommand::Kind::AddChannel:
+        case MicCommand::Kind::RenameChannel:
+        case MicCommand::Kind::RemoveChannel:
+        case MicCommand::Kind::SetMixVolume: return applyMix(command);
         case MicCommand::Kind::ApplySettings: break;  // run() で 3 つの書き込みを別々に扱う
     }
     return false;
@@ -213,6 +281,7 @@ void MicWorker::run() {
             const MicCommand command = queue_.front();
             queue_.pop_front();
             const bool isNsParams = command.kind == MicCommand::Kind::SetNsParams;
+            const bool isMixVolume = command.kind == MicCommand::Kind::SetMixVolume;
             const int nodeId = state_.nsParams.nodeKnown ? state_.nsParams.nodeId : -1;
             if (isNsParams || (command.kind == MicCommand::Kind::ApplySettings && command.withNsParams)) {
                 // 書いた値が、これからの「かけたい値」になる
@@ -272,7 +341,10 @@ void MicWorker::run() {
             const bool isDefault = command.kind == MicCommand::Kind::SetDefaultOutput ||
                                    command.kind == MicCommand::Kind::SetDefaultInput;
             MicState fresh;
-            if (isNsParams) {
+            if (isMixVolume) {
+                // バーを動かしている間は、グラフ全体を読み直さない
+                fresh = before;
+            } else if (isNsParams) {
                 // 強さを変えたときは、その値だけ読み直す（バーを動かしている間に重いものを読まない）
                 fresh = before;
                 fresh.nsParams = readNsParams();
@@ -294,12 +366,17 @@ void MicWorker::run() {
                     case MicCommand::Kind::SetAutostart: fresh.writeError = MicError::WriteAutostart; break;
                     case MicCommand::Kind::SetDefaultOutput: fresh.writeError = MicError::WriteOutput; break;
                     case MicCommand::Kind::SetDefaultInput: fresh.writeError = MicError::WriteInput; break;
+                    case MicCommand::Kind::MixEnable:
+                    case MicCommand::Kind::AddChannel:
+                    case MicCommand::Kind::RenameChannel:
+                    case MicCommand::Kind::RemoveChannel:
+                    case MicCommand::Kind::SetMixVolume: fresh.writeError = MicError::WriteMix; break;
                     default: fresh.writeError = MicError::WriteSettings; break;
                 }
             }
             ++completed_;
             store(fresh);
-            if (!isNsParams) {
+            if (!isNsParams && !isMixVolume) {
                 nextRefresh = after(kRefreshSec);
                 nextAutostart = after(kAutostartRefreshSec);
             }

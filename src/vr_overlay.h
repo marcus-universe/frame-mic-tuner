@@ -48,6 +48,9 @@ enum class OverlayRepair {
 struct VrEvents {
     bool quit = false;                  ///< SteamVR から終了を求められた（VREvent_Quit。SteamVR 自体が終わる）
     bool closeRequested = false;        ///< ダッシュボードのアイコンの「閉じる」が押された（VREvent_OverlayClosed）
+    bool keyboardDone = false;          ///< キーボードの「完了」（keyboardText に入った文字）
+    bool keyboardClosed = false;        ///< キーボードが閉じた（完了以外。キャンセル）
+    std::string keyboardText;           ///< 完了のとき、入力されていた文字
     std::vector<PointerInput> pointer;  ///< パネルへの操作（届いた順）
 };
 
@@ -108,6 +111,15 @@ public:
      * ダッシュボードを開いて、このアプリのパネルを出す（IVROverlay::ShowDashboard）。
      */
     void showPanel();
+
+    /**
+     * チャンネル名用のキーボードを出す（1 行、モーダル）。
+     * @param description キーボードの上の説明
+     * @param existing 最初から入っている文字
+     * @param maxBytes 受け付ける最大バイト数（UTF-8。32 文字の日本語は 96 バイト）
+     * @return 出せたら true
+     */
+    bool showKeyboard(const std::string& description, const std::string& existing, int maxBytes);
 
     /**
      * ダッシュボードのサムネイル画像を送る（接続直後に 1 回）。

@@ -24,6 +24,10 @@ app_config="$config_home/frame-mic-tuner"
 wp_script="$data_home/wireplumber/scripts/frame-mic-tracker.lua"
 wp_conf="$config_home/wireplumber/wireplumber.conf.d/90-frame-mic.conf"
 update_script="$data_home/frame-mic-tuner/frame-update.sh"
+mix_script="$HOME/.local/lib/frame-mic-tuner/frame-mic-mix-run.sh"
+mix_core_unit="frame-mic-mix.service"
+mix_channel_unit="frame-mic-mix-channel@.service"
+mix_names="$config_home/pipewire/frame-mic-mix"
 
 # A release tar.gz has the built binary next to this script and no CMakeLists.txt; a git checkout has
 # the source and no binary here yet (or an outdated one from a previous build).
@@ -57,8 +61,17 @@ fi
 if [[ $uninstall -eq 1 ]]; then
     # Stop and disable the service, and quit an instance started from the dashboard (+), if any.
     systemctl --user disable --now "$unit" 2>/dev/null || true
+    systemctl --user disable --now "$mix_core_unit" 2>/dev/null || true
+    # チャンネルごとに動いているインスタンスも止める（テンプレートだけ消してもプロセスは残る）
+    while read -r instance; do
+        [[ -z "$instance" ]] && continue
+        systemctl --user disable --now "$instance" 2>/dev/null || true
+    done < <(systemctl --user list-units --all --plain --no-legend 'frame-mic-mix-channel@*' 2>/dev/null | awk '{print $1}')
     pkill -TERM -x frame-mic-tuner 2>/dev/null || true
-    rm -f "$bin" "$desktop" "$unit_dir/$unit" "$wp_script" "$wp_conf" "$update_script"
+    rm -f "$bin" "$desktop" "$unit_dir/$unit" "$unit_dir/$mix_core_unit" "$unit_dir/$mix_channel_unit" \
+        "$wp_script" "$wp_conf" "$update_script" "$mix_script"
+    rm -rf "$mix_names"
+    rmdir "$(dirname "$mix_script")" 2>/dev/null || true
     rmdir "$(dirname "$update_script")" 2>/dev/null || true
     for size in 48 128 256; do
         rm -f "$icons/${size}x${size}/apps/frame-mic-tuner.png"
@@ -127,6 +140,9 @@ sed "s|@BINARY@|$bin|" contrib/frame-mic-tuner.desktop > "$desktop.tmp"
 chmod 644 "$desktop.tmp"
 mv "$desktop.tmp" "$desktop"
 install -Dm644 contrib/frame-mic-tuner.service "$unit_dir/$unit"
+install -Dm755 contrib/pipewire/frame-mic-mix-run.sh "$mix_script"
+install -Dm644 contrib/frame-mic-mix.service "$unit_dir/$mix_core_unit"
+install -Dm644 contrib/frame-mic-mix-channel@.service "$unit_dir/$mix_channel_unit"
 systemctl --user daemon-reload
 if command -v desktop-file-validate >/dev/null 2>&1; then
     desktop-file-validate "$desktop" || true

@@ -251,6 +251,7 @@ MicState readMicState(bool withAutostart) {
     if (settings.ok()) {
         state.echoKnown = parseSettingFromList(settings.out, kEchoCancelKey, state.echo);
         state.nsKnown = parseSettingFromList(settings.out, kNoiseSuppressionKey, state.ns);
+        state.mix.settingKnown = parseSettingFromList(settings.out, kMixSettingKey, state.mix.enabled);
         if (!state.echoKnown || !state.nsKnown) {
             // 一覧に無い = WirePlumber に frame-mic-tracker と 90-frame-mic.conf が入っていない
             std::fprintf(stderr, "[マイク] 設定 %s / %s が一覧にありません\n", kEchoCancelKey, kNoiseSuppressionKey);
@@ -274,6 +275,13 @@ MicState readMicState(bool withAutostart) {
     state.muteKnown = readMute(state.muted);
 
     state.nsParams = readNsParams();
+    // ミックスのノード（失敗してもマイクの設定自体は失敗にしない）
+    const MixGraph mix = readMixGraph({});
+    const bool settingKnown = state.mix.settingKnown;
+    const bool mixOn = state.mix.enabled;
+    state.mix = mix;
+    state.mix.settingKnown = settingKnown;
+    state.mix.enabled = mixOn;
 
     if (!withAutostart) return state;
     // is-enabled は「無効」「見つからない」でも 0 以外の終了コードを返すので、出力で見分ける
@@ -301,7 +309,7 @@ bool sameMicState(const MicState& a, const MicState& b) {
     return a.loaded == b.loaded && a.echoKnown == b.echoKnown && a.echo == b.echo && a.nsKnown == b.nsKnown &&
            a.ns == b.ns && a.linksKnown == b.linksKnown && a.inUse == b.inUse && a.muteKnown == b.muteKnown &&
            a.muted == b.muted && a.autostart == b.autostart && sameNs && a.nsApplied == b.nsApplied &&
-           a.devices == b.devices && a.readError == b.readError && a.writeError == b.writeError;
+           a.devices == b.devices && sameMixGraph(a.mix, b.mix) && a.readError == b.readError && a.writeError == b.writeError;
 }
 
 double clampNsVad(double value) {

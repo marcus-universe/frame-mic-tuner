@@ -114,7 +114,8 @@ bool loadConfig(const std::string& path, Config& out, std::vector<std::string>& 
     Config config;  // 書かれていない項目は既定値
     for (const auto& member : root.members) {
         if (member.first != "language" && member.first != "tab" && member.first != "ns_vad_threshold_percent" &&
-            member.first != "ns_vad_grace_ms" && member.first != "update_check" && member.first != "outputs") {
+            member.first != "ns_vad_grace_ms" && member.first != "update_check" && member.first != "outputs" &&
+            member.first != "mix_enabled" && member.first != "mix_channels") {
             warnings.push_back("知らないキーです: " + member.first);
         }
     }
@@ -128,8 +129,10 @@ bool loadConfig(const std::string& path, Config& out, std::vector<std::string>& 
             config.tab = PanelTab::Quick;
         } else if (tab->isString() && tab->text == "fine") {
             config.tab = PanelTab::Fine;
+        } else if (tab->isString() && tab->text == "mix") {
+            config.tab = PanelTab::Mix;
         } else {
-            warnings.push_back("tab は \"quick\" か \"fine\" で書いてください");
+            warnings.push_back("tab は \"quick\"、\"fine\"、\"mix\" のいずれかで書いてください");
         }
     }
     if (const JsonValue* updateCheck = root.get("update_check")) {
@@ -166,6 +169,40 @@ bool loadConfig(const std::string& path, Config& out, std::vector<std::string>& 
             warnings.push_back("outputs は { ... } で書いてください");
         }
     }
+    if (const JsonValue* mixEnabled = root.get("mix_enabled")) {
+        if (mixEnabled->isBool()) {
+            config.mixEnabled = mixEnabled->boolean;
+        } else {
+            warnings.push_back("mix_enabled は true か false で書いてください");
+        }
+    }
+    if (const JsonValue* mixChannels = root.get("mix_channels")) {
+        if (mixChannels->type == JsonValue::Type::Array) {
+            for (const JsonValue& item : mixChannels->items) {
+                const JsonValue* id = item.get("id");
+                const JsonValue* name = item.get("name");
+                if (!item.isObject() || id == nullptr || !id->isString() || name == nullptr || !name->isString()) {
+                    warnings.push_back("mix_channels は { \"id\", \"name\" } の配列で書いてください");
+                    continue;
+                }
+                std::string normalized;
+                if (validateChannelName(name->text, config.mixChannels, "", normalized) != MixNameError::Ok) {
+                    warnings.push_back("mix_channels の名前を飛ばしました: " + name->text);
+                    continue;
+                }
+                if (id->text.size() != 3 || id->text[0] != 'c' || id->text[1] != 'h' || id->text[2] < '1' || id->text[2] > '8') {
+                    warnings.push_back("mix_channels の id を飛ばしました: " + id->text);
+                    continue;
+                }
+                bool used = false;
+                for (const MixChannel& channel : config.mixChannels) used = used || channel.id == id->text;
+                if (used || static_cast<int>(config.mixChannels.size()) >= kMixChannelMax) continue;
+                config.mixChannels.push_back({id->text, normalized});
+            }
+        } else {
+            warnings.push_back("mix_channels は [ ... ] で書いてください");
+        }
+    }
     out = config;
     return true;
 }
@@ -191,8 +228,17 @@ bool saveConfig(const std::string& path, const Config& config, std::string& erro
     std::ostringstream out;
     out << "{\n"
         << "  \"language\": \"" << languageCode(config.language) << "\",\n"
-        << "  \"tab\": \"" << (config.tab == PanelTab::Fine ? "fine" : "quick") << "\",\n"
-        << "  \"update_check\": " << (config.updateCheck ? "true" : "false");
+        << "  \"tab\": \""
+        << (config.tab == PanelTab::Fine ? "fine" : config.tab == PanelTab::Mix ? "mix" : "quick") << "\",\n"
+        << "  \"update_check\": " << (config.updateCheck ? "true" : "false") << ",\n"
+        << "  \"mix_enabled\": " << (config.mixEnabled ? "true" : "false") << ",\n"
+        << "  \"mix_channels\": [";
+    for (size_t i = 0; i < config.mixChannels.size(); ++i) {
+        const MixChannel& channel = config.mixChannels[i];
+        out << (i == 0 ? "\n" : ",\n") << "    {\"id\": " << jsonString(channel.id) << ", \"name\": " << jsonString(channel.name)
+            << "}";
+    }
+    out << (config.mixChannels.empty() ? "]" : "\n  ]");
     if (config.hasNsParams) {
         char numbers[128];
         std::snprintf(numbers, sizeof(numbers), ",\n  \"ns_vad_threshold_percent\": %.0f,\n  \"ns_vad_grace_ms\": %.0f",

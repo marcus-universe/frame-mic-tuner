@@ -99,6 +99,150 @@ SimpleEventHook {
   end
 }:register ()
 
+-- PC への無線マイク（VRLink）を、ミックスがオンのときだけ「Frame Mic + Mix」から取らせる。
+-- ソースが無い・設定がオフのときは、自分で向けたターゲットだけ外して、ふつうの既定マイクに戻す。
+local mix_source_name = "frame_micmix_source"
+local routed = {}
+
+local default_om = ObjectManager {
+  Interest {
+    type = "metadata",
+    Constraint { "metadata.name", "=", "default" },
+  }
+}
+
+local capture_om = ObjectManager {
+  Interest {
+    type = "node",
+    Constraint { "media.class", "=", "Stream/Input/Audio" },
+  }
+}
+
+local source_om = ObjectManager {
+  Interest {
+    type = "node",
+    Constraint { "node.name", "=", mix_source_name },
+  }
+}
+
+local function is_vrlink (node)
+  local props = node.properties
+  local media = props["media.name"] or ""
+  local app = props["application.name"] or ""
+  local binary = props["application.process.binary"] or ""
+  return media == "Valve VRLink Microphone Input" or app == "vrlink" or binary == "vrlink"
+end
+
+local function apply_route ()
+  local metadata = default_om:lookup()
+  if metadata == nil then
+    return
+  end
+  local mix_on = Settings.get_boolean("frame-mic.mix")
+  local source = source_om:lookup()
+  for node in capture_om:iterate() do
+    if is_vrlink(node) then
+      local id = tonumber(node.properties["object.id"])
+      if id ~= nil then
+        if mix_on and source ~= nil then
+          local serial = source.properties["object.serial"]
+          if serial ~= nil then
+            -- 名前の JSON だと既定マイクのままになる。object.serial の数字だけがリンク先になる。
+            metadata:set(id, "target.object", nil, tostring(serial))
+            routed[id] = true
+          end
+        elseif routed[id] then
+          metadata:set(id, "target.object", nil, nil)
+          routed[id] = nil
+        end
+      end
+    end
+  end
+end
+
+default_om:connect("object-added", function ()
+  apply_route()
+end)
+capture_om:connect("object-added", function ()
+  apply_route()
+end)
+source_om:connect("object-added", function ()
+  apply_route()
+end)
+source_om:connect("object-removed", function ()
+  apply_route()
+end)
+
+default_om:activate()
+capture_om:activate()
+source_om:activate()
+
+Settings.subscribe("frame-mic.mix", function ()
+  apply_route()
+end)
+apply_route()
+
+-- Frame のスピーカーが既定のとき、SteamOS は再生ストリームを空間オーディオへ奪う。
+-- アプリが「Frame Mix: chN」を出力に選んでいたら、そのターゲットをメタデータで戻す。
+local playback_om = ObjectManager {
+  Interest {
+    type = "node",
+    Constraint { "media.class", "=", "Stream/Output/Audio" },
+  }
+}
+
+local function channel_target (node)
+  local props = node.properties
+  local target = props["target.object"] or props["node.target"] or ""
+  if target:find("^frame_mix_ch[1-8]$") then
+    return target
+  end
+  return nil
+end
+
+local sink_om = ObjectManager {
+  Interest {
+    type = "node",
+    Constraint { "media.class", "=", "Audio/Sink" },
+  }
+}
+
+local function sink_serial (name)
+  for node in sink_om:iterate() do
+    if node.properties["node.name"] == name then
+      return node.properties["object.serial"]
+    end
+  end
+  return nil
+end
+
+-- 名前（frame_mix_ch1）ではなく object.serial を書く。名前の JSON 文字列だと
+-- リンク先に選ばれず、既定のスピーカーへ落ちる。
+local function pin_channel_targets ()
+  local metadata = default_om:lookup()
+  if metadata == nil then
+    return
+  end
+  for node in playback_om:iterate() do
+    local target = channel_target(node)
+    local id = tonumber(node.properties["object.id"])
+    local serial = target and sink_serial(target) or nil
+    if serial ~= nil and id ~= nil then
+      -- 型なしの数字。JSON 文字列にするとリンク先として使われない。
+      metadata:set(id, "target.object", nil, tostring(serial))
+    end
+  end
+end
+
+playback_om:connect("object-added", function ()
+  pin_channel_targets()
+end)
+sink_om:connect("object-added", function ()
+  pin_channel_targets()
+end)
+playback_om:activate()
+sink_om:activate()
+
 SimpleEventHook {
   name = "frame-mic-stream-removed",
   interests = {

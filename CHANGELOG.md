@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0 (2026-10-14)
+
+- **Mix** tab: named virtual outputs (up to 8, for example "Frame Mix: Music") that an app can select as its playback device. Each channel has **Into mic** and **Headphones** sliders (0–150%). The filtered built-in mic (after EQ, echo cancellation and noise suppression) has its own slider. Everything sums to a source named **Frame Mic + Mix**. While **On**, the VRLink mic stream to the PC is aimed at that source, so the PC's "Steam Streaming Microphone" hears the mic and the channels. **Off** leaves the channel outputs running for the headphones and sends the PC the normal mic. Adding, renaming or removing one channel does not interrupt the others.
+- Channel names come from a suggestion list in the panel language (Music, Soundboard, Browser, Game, Video, Voice chat, System sounds, and the Japanese and Simplified Chinese equivalents) or from the SteamVR keyboard. Names are trimmed, compared without regard to ASCII case, and must be unique and at most 32 characters. The row shows which apps are playing into that channel. **Delete** asks for a second press.
+- The in-panel **Update** button still installs releases from `sasaken1102r/frame-mic-tuner`. Updating that way replaces this build and removes the Mix tab.
+
 ## 0.3.0 (2026-10-10)
 
 - Simplified Chinese UI (thanks to @boholder and @dhies23, #1). The language switch at the bottom left is now **日本語 / English / 简体中文**. The panel starts in Simplified Chinese when Steam is set to Simplified Chinese (`schinese`; without a Steam setting, a `zh_CN` locale); the settings file and `--language` take `"sc"`.

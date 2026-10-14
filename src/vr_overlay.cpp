@@ -252,12 +252,34 @@ void VrOverlay::shutdown() {
     std::fprintf(stderr, "[VR] 終了処理 Vulkan を片付けました\n");
 }
 
+namespace {
+
+/**
+ * キーボードの完了・閉じたを結果に入れる（システム側とオーバーレイ側の両方に届く）。
+ * @param event イベント
+ * @param result 書き込み先
+ */
+void takeKeyboard(const vr::VREvent_t& event, VrEvents& result) {
+    if (event.eventType == vr::VREvent_KeyboardDone) {
+        result.keyboardDone = true;
+        char text[256];
+        text[0] = '\0';
+        vr::VROverlay()->GetKeyboardText(text, sizeof(text));
+        result.keyboardText = text;
+    } else if (event.eventType == vr::VREvent_KeyboardClosed) {
+        result.keyboardClosed = true;
+    }
+}
+
+}  // namespace
+
 VrEvents VrOverlay::pollEvents() {
     VrEvents result;
     if (!connected_) return result;
     vr::VREvent_t event {};
     while (vr::VRSystem()->PollNextEvent(&event, sizeof(event))) {
         if (event.eventType == vr::VREvent_Quit) result.quit = true;
+        takeKeyboard(event, result);
     }
     if (dashboardHandle_ != 0) {
         while (vr::VROverlay()->PollNextOverlayEvent(dashboardHandle_, &event, sizeof(event))) {
@@ -289,6 +311,8 @@ VrEvents VrOverlay::pollEvents() {
                     break;
                 case vr::VREvent_OverlayShown: std::fprintf(stderr, "[VR] パネルが開きました\n"); break;
                 case vr::VREvent_OverlayHidden: std::fprintf(stderr, "[VR] パネルが閉じました\n"); break;
+                case vr::VREvent_KeyboardDone:
+                case vr::VREvent_KeyboardClosed: takeKeyboard(event, result); break;
                 default: break;
             }
         }
@@ -307,6 +331,19 @@ bool VrOverlay::steamVrAlive() const {
 
 bool VrOverlay::panelVisible() const {
     return connected_ && dashboardHandle_ != 0 && vr::VROverlay()->IsOverlayVisible(dashboardHandle_);
+}
+
+bool VrOverlay::showKeyboard(const std::string& description, const std::string& existing, int maxBytes) {
+    if (!connected_ || dashboardHandle_ == 0 || maxBytes < 1) return false;
+    const vr::EVROverlayError error = vr::VROverlay()->ShowKeyboardForOverlay(
+        dashboardHandle_, vr::k_EGamepadTextInputModeNormal, vr::k_EGamepadTextInputLineModeSingleLine,
+        vr::KeyboardFlag_Modal, description.c_str(), static_cast<uint32_t>(maxBytes), existing.c_str(), 0);
+    if (error != vr::VROverlayError_None) {
+        std::fprintf(stderr, "[VR] キーボードを出せません: %s\n", overlayErrorName(error));
+        return false;
+    }
+    std::fprintf(stderr, "[VR] キーボードを出しました\n");
+    return true;
 }
 
 void VrOverlay::showPanel() {

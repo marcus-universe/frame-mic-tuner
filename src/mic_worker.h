@@ -24,6 +24,11 @@ struct MicCommand {
         SetMute,           ///< 既定のマイクのミュート（value = ミュートする。wpctl set-mute @DEFAULT_AUDIO_SOURCE@ 1|0）
         SetDefaultOutput,  ///< 音の出口を既定にする（nodeId・nodeName。wpctl set-default）
         SetDefaultInput,   ///< 使うマイクを既定にする（nodeId・nodeName）
+        MixEnable,         ///< PC へ流す（value）。text は「id\\t名前」の行（チャンネルを起動する）
+        AddChannel,        ///< チャンネルを足す（nodeName = id、text = 名前、value = コアも起動するか）
+        RenameChannel,     ///< 名前を変えてそのチャンネルだけ再起動（nodeName = id、text = 名前）
+        RemoveChannel,     ///< チャンネルを止めて名前ファイルを消す（nodeName = id）
+        SetMixVolume,      ///< 音量（nodeId、nodeName、vad = 線形 0〜1.5）
     };
     Kind kind;
     bool value = false;
@@ -34,6 +39,7 @@ struct MicCommand {
     bool onlyIfChanged = false;  ///< ApplySettings: 今の値と同じものは書かない（自動の切り替え）
     int nodeId = -1;             ///< SetDefault*: ノードの id
     std::string nodeName {};     ///< SetDefault*: ノードの名前（読み返しで比べる）
+    std::string text {};         ///< ミックス: チャンネル名、または「id\\t名前」の行
 
     /**
      * 出口の設定をまとめてかける書き込みを作る。

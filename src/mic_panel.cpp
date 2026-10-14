@@ -584,6 +584,7 @@ std::string errorText(MicError error, const UiText& text) {
         case MicError::WriteMuteOn: return text.errWriteMuteOn;
         case MicError::WriteOutput: return text.errWriteOutput;
         case MicError::WriteInput: return text.errWriteInput;
+        case MicError::WriteMix: return text.errWriteMix;
     }
     return "";
 }
@@ -701,7 +702,9 @@ PanelHit MicPanel::hitTest(double x, double y, bool* inList) const {
 double MicPanel::trackValue(const Track& track, double x) {
     const double fraction = std::clamp((x - track.x0) / std::max(1.0, track.x1 - track.x0), 0.0, 1.0);
     const double value = track.min + (track.max - track.min) * fraction;
-    return track.action == PanelAction::NsVadSlider ? clampNsVad(value) : clampNsGrace(value);
+    if (track.action == PanelAction::NsVadSlider) return clampNsVad(value);
+    if (track.action == PanelAction::NsGraceSlider) return clampNsGrace(value);
+    return clampMixLinear(value) * 100.0;
 }
 
 void MicPanel::applyLocal(const PanelHit& hit) {
@@ -746,6 +749,11 @@ void MicPanel::applyLocal(const PanelHit& hit) {
             overlay_ = confirmBack_;
             launchResult_ = frame_apps::LaunchResult::Started;
             break;
+        case PanelAction::MixAdd:
+            overlay_ = PanelOverlay::MixSuggest;
+            listScroll_ = 0;
+            nameError_.clear();
+            break;
         default: break;
     }
 }
@@ -769,7 +777,7 @@ bool MicPanel::pointerMove(double x, double y) {
     if (dragAction_ != PanelAction::None) {
         // ドラッグ中は、ポインターが溝の上下に外れても横の位置で値を決める
         for (const Track& track : tracks_) {
-            if (track.action != dragAction_) continue;
+            if (track.action != dragAction_ || track.index != dragIndex_) continue;
             const double value = trackValue(track, x);
             if (value == dragValue_) return false;
             dragValue_ = value;
@@ -809,13 +817,28 @@ PanelHit MicPanel::pointerDown(double x, double y, double now) {
         listStartScroll_ = listScroll_;
         return {};
     }
-    if (hit.action == PanelAction::NsVadSlider || hit.action == PanelAction::NsGraceSlider) {
+    const bool slider = hit.action == PanelAction::NsVadSlider || hit.action == PanelAction::NsGraceSlider ||
+                        hit.action == PanelAction::MixMicSlider || hit.action == PanelAction::MixToMicSlider ||
+                        hit.action == PanelAction::MixToPhonesSlider;
+    if (slider) {
         // バーは押したところへ飛び、そのままドラッグ
         for (const Track& track : tracks_) {
-            if (track.action != hit.action) continue;
+            if (track.action != hit.action || track.index != hit.index) continue;
             dragAction_ = track.action;
+            dragIndex_ = hit.index;
             dragValue_ = trackValue(track, x);
         }
+    }
+    if (hit.action == PanelAction::MixDelete) {
+        if (deleteArmed_ == hit.key && now <= deleteArmedUntil_) {
+            deleteArmed_.clear();
+        } else {
+            deleteArmed_ = hit.key;
+            deleteArmedUntil_ = now + kQuitConfirmSec;
+            return {};
+        }
+    } else if (hit.action != PanelAction::None) {
+        deleteArmed_.clear();
     }
     if (hit.action == PanelAction::Quit) {
         // 誤って押しても終わらないよう、1 回目は確認の表示にするだけ
@@ -848,6 +871,17 @@ PanelHit MicPanel::pointerUp() {
         if (!listDragging_ && listPress_.action != PanelAction::None && hitTest(pointer_.x, pointer_.y) == listPress_) {
             result = listPress_;
         }
+        if (result.action == PanelAction::MixDelete) {
+            if (deleteArmed_ == result.key && now_ <= deleteArmedUntil_) {
+                deleteArmed_.clear();
+            } else {
+                deleteArmed_ = result.key;
+                deleteArmedUntil_ = now_ + kQuitConfirmSec;
+                result = {};
+            }
+        } else if (result.action != PanelAction::None) {
+            deleteArmed_.clear();
+        }
         listTracking_ = false;
         listDragging_ = false;
         listPress_ = {};
@@ -869,7 +903,7 @@ bool MicPanel::pointerLeave() {
 }
 
 bool MicPanel::scroll(double dy) {
-    if (dy == 0.0 || overlay_ == PanelOverlay::None || overlay_ == PanelOverlay::AppsConfirm) return false;
+    if (dy == 0.0 || listMaxScroll_ <= 0 || overlay_ == PanelOverlay::AppsConfirm) return false;
     const double next = std::clamp(listScroll_ - dy * kScrollPxPerUnit, 0.0, listMaxScroll_);
     if (next == listScroll_) return false;
     listScroll_ = next;
@@ -878,6 +912,7 @@ bool MicPanel::scroll(double dy) {
 
 bool MicPanel::tick(double now) {
     const bool holdExpired = holdUntil_ >= 0 && now_ <= holdUntil_ && now > holdUntil_;
+    const bool mixHoldExpired = holdMixUntil_ >= 0 && now_ <= holdMixUntil_ && now > holdMixUntil_;
     now_ = now;
     bool changed = holdExpired;  // 書いた値の表示をやめて、読んだ値に戻す
     if (quitArmed_ && now > quitArmedUntil_) {
@@ -888,6 +923,15 @@ bool MicPanel::tick(double now) {
         updateArmed_ = false;
         changed = true;
     }
+    if (!deleteArmed_.empty() && now > deleteArmedUntil_) {
+        deleteArmed_.clear();
+        changed = true;
+    }
+    if (!nameError_.empty() && now > nameErrorUntil_) {
+        nameError_.clear();
+        changed = true;
+    }
+    if (mixHoldExpired) changed = true;
     return changed;
 }
 
@@ -907,6 +951,32 @@ void MicPanel::resetView() {
 void MicPanel::holdPreset(PanelAction action, double until) {
     presetHold_ = action;
     presetHoldUntil_ = until;
+}
+
+bool MicPanel::mixDrag(std::string& node, double& percent) const {
+    if (dragAction_ != PanelAction::MixMicSlider && dragAction_ != PanelAction::MixToMicSlider &&
+        dragAction_ != PanelAction::MixToPhonesSlider) {
+        return false;
+    }
+    for (const Track& track : tracks_) {
+        if (track.action == dragAction_ && track.index == dragIndex_) {
+            node = track.node;
+            percent = dragValue_;
+            return !node.empty();
+        }
+    }
+    return false;
+}
+
+void MicPanel::holdMixVolume(const std::string& node, double percent, double until) {
+    holdMixNode_ = node;
+    holdMixPercent_ = percent;
+    holdMixUntil_ = until;
+}
+
+void MicPanel::setNameError(const std::string& text, double until) {
+    nameError_ = text;
+    nameErrorUntil_ = until;
 }
 
 void MicPanel::holdNsValues(double vad, double grace, double until) {
@@ -1147,12 +1217,24 @@ void MicPanel::drawSettings(const frame_ui::Canvas& ui, const UiText& t, const C
     }
 
     drawSelectors(ui, t, config, model);
+    const int tabIndex = config.tab == PanelTab::Quick ? 0 : config.tab == PanelTab::Fine ? 1 : 2;
+    if (config.tab == PanelTab::Mix) {
+        frame_ui::drawCard(ui, Rect {28, 168, 1144, 492});
+        const std::vector<Rect> tabs =
+            frame_ui::drawSegmented(ui, kTabsRect, {t.tabQuick, t.fineTune, t.mixTab}, tabIndex, true);
+        addButton({PanelAction::TabQuick}, tabs[0]);
+        addButton({PanelAction::TabFine}, tabs[1]);
+        addButton({PanelAction::TabMix}, tabs[2]);
+        drawMix(ui, t, config, model);
+        return;
+    }
     frame_ui::drawCard(ui, kSettingsCard);
     const bool external = !devices.defaultInputKey.empty() && !isBuiltinMic(devices.defaultInputKey);
-    const std::vector<Rect> tabs = frame_ui::drawSegmented(ui, kTabsRect, {t.tabQuick, t.fineTune},
-                                                           config.tab == PanelTab::Quick ? 0 : 1, !external);
+    const std::vector<Rect> tabs =
+        frame_ui::drawSegmented(ui, kTabsRect, {t.tabQuick, t.fineTune, t.mixTab}, tabIndex, true);
     addButton({PanelAction::TabQuick}, tabs[0]);
     addButton({PanelAction::TabFine}, tabs[1]);
+    addButton({PanelAction::TabMix}, tabs[2]);
     if (external) {
         drawExternal(ui, t, model, echo, ns, outputName);
     } else if (config.tab == PanelTab::Quick) {
@@ -1162,6 +1244,158 @@ void MicPanel::drawSettings(const frame_ui::Canvas& ui, const UiText& t, const C
     }
     drawPipeline(ui, t, state, external);
     drawVoice(ui, t, model.voice);
+}
+
+void MicPanel::drawMix(const frame_ui::Canvas& ui, const UiText& t, const Config& config, const PanelModel& model) {
+    cairo_t* cr = ui.cr;
+    const MixGraph& mix = model.state.mix;
+    const bool routing = mix.settingKnown && mix.enabled;
+    std::string status = routing ? (mix.vrlinkPresent ? t.mixToPcOn : t.mixToPcWaiting) : t.mixToPcOff;
+    if (config.mixEnabled && !mix.settingKnown) status = t.mixNeedRestart;
+    const std::vector<Rect> power =
+        frame_ui::drawSegmented(ui, {50, 256, 280, 48}, {t.on, t.off}, routing || config.mixEnabled ? 0 : 1, true);
+    addButton({PanelAction::MixOn}, power[0]);
+    addButton({PanelAction::MixOff}, power[1]);
+    ui.text(346, 256 + 30, ui.ellipsize(status, 15, 820), 15, rgb(routing && mix.routed ? kSuccess : kTextSoft), true);
+
+    if (!nameError_.empty() && now_ <= nameErrorUntil_) {
+        ui.text(50, 312, ui.ellipsize(nameError_, 14, 1080), 14, rgb(kDangerText));
+    } else {
+        ui.text(50, 312, ui.ellipsize(t.mixHint, 13, 1080), 13, rgb(kTextMuted));
+    }
+
+    /**
+     * パーセントのバーを 1 本描く。ノードが無いときは灰色で押せない。
+     */
+    const auto slider = [&](Rect row, const std::string& label, const std::string& node, const MixNodeVolume& live,
+                            PanelAction action, int index, const Rect* clip) {
+        const bool draggingThis = dragAction_ == action && dragIndex_ == index;
+        double percent = live.known ? std::clamp(live.linear, 0.0, kMixVolumeMax) * 100.0 : 100.0;
+        if (holdMixNode_ == node && now_ <= holdMixUntil_) percent = holdMixPercent_;
+        if (draggingThis) percent = dragValue_;
+        const double labelW = 118;
+        ui.text(row.x, row.y + 22, ui.ellipsize(label, 14, labelW, true), 14, rgb(kText), true);
+        const double x0 = row.x + labelW + 8;
+        const double x1 = row.right() - 64;
+        const double cy = row.y + 16;
+        fillRounded(cr, {x0, cy - 3, x1 - x0, 6}, 3, kDivider);
+        const double fraction = std::clamp(percent / 150.0, 0.0, 1.0);
+        const double thumbX = x0 + (x1 - x0) * fraction;
+        if (live.known || draggingThis) {
+            if (thumbX > x0 + 1) fillRounded(cr, {x0, cy - 3, thumbX - x0, 6}, 3, kAccent);
+            fillCircle(cr, thumbX, cy, 11, kCard);
+            fillCircle(cr, thumbX, cy, 9, kText);
+            tracks_.push_back({action, x0, x1, 0, 150, cy, index, node});
+            Rect hit {x0 - 8, row.y, x1 - x0 + 16, row.h};
+            if (clip != nullptr) hit = intersect(hit, *clip);
+            if (hit.w > 4 && hit.h > 4) addButton({action, index, node}, hit, false);
+        }
+        char text[16];
+        std::snprintf(text, sizeof(text), "%.0f%%", percent);
+        ui.text(row.right(), row.y + 22, text, 15, rgb(kText), true, true);
+    };
+
+    slider({50, 328, 1100, 36}, t.mixMic, kMixMicLevelNode, mix.mic, PanelAction::MixMicSlider, 0, nullptr);
+
+    const Rect list {44, 368, 1112, 228};
+    const double rowH = 104;
+    const double gap = 6;
+    const double contentH = config.mixChannels.empty() ? 36 : config.mixChannels.size() * (rowH + gap) - gap;
+    beginList(list, contentH);
+    cairo_save(cr);
+    cairo_rectangle(cr, list.x, list.y, list.w, list.h);
+    cairo_clip(cr);
+    if (config.mixChannels.empty()) {
+        ui.text(list.x + 8, list.y + 24, t.mixEmpty, 16, rgb(kTextMuted));
+    }
+    double y = list.y - listScroll_;
+    for (size_t i = 0; i < config.mixChannels.size(); ++i) {
+        const MixChannel& channel = config.mixChannels[i];
+        if (y + rowH >= list.y && y <= list.bottom()) {
+            const MixChannelLive* live = nullptr;
+            for (const MixChannelLive& item : mix.channels) {
+                if (item.id == channel.id) live = &item;
+            }
+            const Rect row {list.x, y, list.w - 16, rowH};
+            fillRounded(cr, row, 14, kInset);
+            const bool armed = deleteArmed_ == channel.id && now_ <= deleteArmedUntil_;
+            const Rect del {row.right() - 12 - 150, y + 8, 150, 36};
+            addButton({PanelAction::MixDelete, static_cast<int>(i), channel.id}, intersect(del, list), true);
+            frame_ui::drawButton(ui, del, armed ? t.mixDeleteConfirm : t.mixDelete,
+                                 armed ? frame_ui::ButtonKind::Primary : frame_ui::ButtonKind::Normal);
+            const Rect nameHit {row.x + 12, y + 8, del.x - row.x - 24, 36};
+            addButton({PanelAction::MixRename, static_cast<int>(i), channel.id}, intersect(nameHit, list), true);
+            ui.text(nameHit.x, y + 32, ui.ellipsize(channel.name, 18, nameHit.w, true), 18, rgb(kText), true);
+            MixNodeVolume toMic;
+            MixNodeVolume toPhones;
+            if (live != nullptr) {
+                toMic = live->toMic;
+                toPhones = live->toPhones;
+            }
+            slider({row.x + 12, y + 46, 500, 28}, t.mixToMic, channelToMicNode(channel.id), toMic,
+                   PanelAction::MixToMicSlider, static_cast<int>(i), &list);
+            slider({row.x + 530, y + 46, 500, 28}, t.mixPhones, channelToPhonesNode(channel.id), toPhones,
+                   PanelAction::MixToPhonesSlider, static_cast<int>(i), &list);
+            std::string apps = t.mixAppsNone;
+            if (live != nullptr && !live->apps.empty()) {
+                apps.clear();
+                for (size_t a = 0; a < live->apps.size(); ++a) {
+                    if (a != 0) apps += ", ";
+                    apps += live->apps[a];
+                }
+            }
+            ui.text(row.x + 12, y + rowH - 10, ui.ellipsize(apps, 12, row.w - 24), 12, rgb(kTextMuted));
+        }
+        y += rowH + gap;
+    }
+    cairo_restore(cr);
+    endList(ui, contentH, list.right() - 8);
+
+    const bool room = static_cast<int>(config.mixChannels.size()) < kMixChannelMax;
+    const Rect add {50, 608, 300, 40};
+    if (room) {
+        addButton({PanelAction::MixAdd}, add);
+        frame_ui::drawButton(ui, add, t.mixAdd, frame_ui::ButtonKind::Primary);
+    } else {
+        frame_ui::drawButton(ui, add, t.mixAdd, frame_ui::ButtonKind::Normal, false);
+    }
+}
+
+void MicPanel::drawMixSuggest(const frame_ui::Canvas& ui, const UiText& t, const Config& config) {
+    cairo_t* cr = ui.cr;
+    const Rect modal {120, 70, 960, 640};
+    const double y0 = drawModal(ui, modal, t.mixSuggestTitle, t.mixSuggestSub);
+    const std::vector<std::string> suggestions = {t.suggestMusic, t.suggestBoard, t.suggestBrowser, t.suggestGame,
+                                                  t.suggestVideo, t.suggestVoice, t.suggestSystem};
+    const Rect list {modal.x + 28, y0, modal.w - 56, modal.bottom() - y0 - 24};
+    const double rowH = 56;
+    const double gap = 6;
+    const double contentH = (suggestions.size() + 1) * (rowH + gap) - gap;
+    beginList(list, contentH);
+    cairo_save(cr);
+    cairo_rectangle(cr, list.x, list.y, list.w, list.h);
+    cairo_clip(cr);
+    double y = list.y - listScroll_;
+    for (size_t i = 0; i < suggestions.size() + 1; ++i) {
+        if (y + rowH >= list.y && y <= list.bottom()) {
+            const bool custom = i == suggestions.size();
+            const std::string name = custom ? std::string(t.mixCustom) : suggestions[i];
+            std::string normalized;
+            const bool taken = !custom && validateChannelName(name, config.mixChannels, "", normalized) == MixNameError::Duplicate;
+            const Rect row {list.x, y, list.w - 8, rowH};
+            const int l = taken ? 0 : look(row);
+            fillRounded(cr, row, 14, l == 2 ? kControlDown : (l == 1 ? kControlHover : kInset));
+            ui.text(row.x + 18, y + 36, ui.ellipsize(name, 18, row.w - 36, true), 18,
+                    rgb(taken ? kTextMuted : kText), true);
+            if (!taken) {
+                addButton({custom ? PanelAction::MixCustom : PanelAction::MixSuggest, 0, custom ? std::string() : name},
+                          intersect(row, list), true);
+            }
+        }
+        y += rowH + gap;
+    }
+    cairo_restore(cr);
+    endList(ui, contentH, list.right() - 4);
 }
 
 void MicPanel::drawQuick(const frame_ui::Canvas& ui, const UiText& t, const Config& /*config*/, const PanelModel& model,
@@ -1298,7 +1532,7 @@ void MicPanel::drawFine(const frame_ui::Canvas& ui, const UiText& t, const Panel
             fillCircle(cr, thumbX, cy, r + 2, kCard);  // 塗りと見分けるための縁
             fillCircle(cr, thumbX, cy, r, ns ? kText : kTextMuted);
         }
-        tracks_.push_back({action, trackX0, trackX1, min, max, cy});
+        tracks_.push_back({action, trackX0, trackX1, min, max, cy, 0, {}});
         if (nsParamsKnown) addButton({action}, {trackX0 - 12, top, trackX1 - trackX0 + 24, 48});
 
         char text[32];
@@ -2178,6 +2412,8 @@ void MicPanel::render(const Config& config, const PanelModel& model) {
     const UiText& t = uiText(config.language);
     buttons_.clear();
     tracks_.clear();
+    listRect_ = {};
+    listMaxScroll_ = 0;
 
     // 地（不透明。コントラスト比は不透明な地で計算している）
     cairo_save(cr_);
@@ -2210,6 +2446,7 @@ void MicPanel::render(const Config& config, const PanelModel& model) {
             case PanelOverlay::OutputPicker: drawOutputPicker(top, t, config, model); break;
             case PanelOverlay::MicPicker: drawMicPicker(top, t, model); break;
             case PanelOverlay::AppsList: drawAppsList(top, t, config, model); break;
+            case PanelOverlay::MixSuggest: drawMixSuggest(top, t, config); break;
             case PanelOverlay::AppsConfirm:
                 if (confirmBack_ == PanelOverlay::AppsList) {
                     // 一覧の上に確認を重ねる: 一覧は押せないようにして、もう一段暗くする
@@ -2223,9 +2460,6 @@ void MicPanel::render(const Config& config, const PanelModel& model) {
                 break;
             case PanelOverlay::None: break;
         }
-    } else {
-        listRect_ = {};
-        listMaxScroll_ = 0;
     }
 
     // 押せなくなったボタンに乗っていた印は外す

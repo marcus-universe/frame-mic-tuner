@@ -181,6 +181,38 @@ struct UiText {
     const char* appsErrorNoDisplay;     ///< LaunchResult::NoDisplay
     const char* appsErrorNoKonsole;     ///< LaunchResult::NoKonsole
     const char* appsErrorFailed;        ///< LaunchResult::Failed・UnknownApp
+    // ---- ミックス ----
+    const char* mixTab;              ///< タブ「ミックス」
+    const char* mixToPcOn;           ///< PC のマイクへ流している
+    const char* mixToPcOff;          ///< PC のマイクへは流していない
+    const char* mixToPcWaiting;      ///< ストリームがまだ無い
+    const char* mixNeedRestart;      ///< WirePlumber の再起動が要る
+    const char* mixHint;             ///< アプリでこの出力を選ぶ説明
+    const char* mixMic;              ///< マイクのスライダー
+    const char* mixToMic;            ///< チャンネルをマイクへ
+    const char* mixPhones;           ///< チャンネルをヘッドホンへ
+    const char* mixAdd;              ///< チャンネルを足す
+    const char* mixFull;             ///< これ以上足せない
+    const char* mixEmpty;            ///< チャンネルが無い
+    const char* mixDelete;           ///< 消す
+    const char* mixDeleteConfirm;    ///< もう一度押すと消す
+    const char* mixAppsNone;         ///< いま音を出しているアプリは無い
+    const char* mixSuggestTitle;     ///< 名前を選ぶ
+    const char* mixSuggestSub;       ///< 説明
+    const char* mixCustom;           ///< 自分で名前を付ける
+    const char* mixChannelFormat;    ///< チャンネル %d（キーボードの初期値）
+    const char* mixNameEmpty;        ///< 名前が空
+    const char* mixNameDuplicate;    ///< 同じ名前がある
+    const char* mixNameTooLong;      ///< 長すぎる
+    const char* mixNameBadChar;      ///< 使えない文字
+    const char* suggestMusic;
+    const char* suggestBoard;
+    const char* suggestBrowser;
+    const char* suggestGame;
+    const char* suggestVideo;
+    const char* suggestVoice;
+    const char* suggestSystem;
+    const char* errWriteMix;         ///< ミックスの操作に失敗
 };
 
 /**

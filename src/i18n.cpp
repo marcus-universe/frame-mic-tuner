@@ -135,6 +135,16 @@ const UiText kJapanese = {
     "やめる", "Konsole で開く",
     "同じアプリの Konsole がまだ開いています", "Konsole を開けませんでした: 画面が見つかりません（DISPLAY がありません）",
     "Konsole を開けませんでした: Konsole が入っていません", "Konsole を開けませんでした",
+    // ミックス
+    "ミックス", "PC のマイクへ流しています", "PC のマイクへは流していません", "PC のストリームはまだありません",
+    "流すには、遊んでいないときにヘッドセットを再起動してください",
+    "アプリの出力に「Frame Mix: 名前」を選ぶと、ここのスライダーでヘッドホンとマイクへ混ぜられます",
+    "マイク", "マイクへ", "ヘッドホン", "チャンネルを足す", "チャンネルは 8 個までです", "チャンネルはまだありません",
+    "消す", "もう一度で消す", "いま出しているアプリはありません",
+    "チャンネルの名前", "同じ名前は使えません。使っている候補は灰色です", "自分で名前を付ける…", "チャンネル %d",
+    "名前を入れてください", "その名前はもうあります", "名前は 32 文字までです", "その文字は名前に使えません",
+    "音楽", "サウンドボード", "ブラウザー", "ゲーム", "動画", "ボイスチャット", "システム音",
+    "ミックスを変更できません（systemctl / wpctl）",
 };
 
 const UiText kEnglish = {
@@ -213,6 +223,16 @@ const UiText kEnglish = {
     "Cancel", "Open in Konsole",
     "A Konsole for this app is still open", "Couldn't open Konsole: no screen (DISPLAY isn't set)",
     "Couldn't open Konsole: Konsole isn't installed", "Couldn't open Konsole",
+    // Mix
+    "Mix", "Sending to the PC mic", "Not sending to the PC mic", "No PC stream yet",
+    "Restart the headset while you are not playing, then this can reach the PC",
+    "In an app, pick an output named \"Frame Mix: …\". These sliders send it to your headphones and into the mic",
+    "Microphone", "Into mic", "Headphones", "Add channel", "8 channels is the limit", "No channels yet",
+    "Delete", "Delete?", "Nothing is playing here",
+    "Channel name", "Names have to be different. Names you already use are grey", "Custom name…", "Channel %d",
+    "Enter a name", "That name is already used", "32 characters at most", "That character cannot be in a name",
+    "Music", "Soundboard", "Browser", "Game", "Video", "Voice chat", "System sounds",
+    "Couldn't change the mix (systemctl / wpctl)",
 };
 
 const UiText kSimplifiedChinese = {
@@ -290,6 +310,16 @@ const UiText kSimplifiedChinese = {
     "取消", "在 Konsole 中打开",
     "这个应用的 Konsole 还开着", "无法打开 Konsole：找不到屏幕（没有 DISPLAY）",
     "无法打开 Konsole：没有安装 Konsole", "无法打开 Konsole",
+    // 混音
+    "混音", "正在送到电脑麦克风", "没有送到电脑麦克风", "还没有电脑串流",
+    "要送到电脑，请在不使用时重启头显",
+    "在应用里把输出选成「Frame Mix: 名字」，再用这里的滑块送到耳机和麦克风",
+    "麦克风", "送入麦克风", "耳机", "添加通道", "最多 8 个通道", "还没有通道",
+    "删除", "再按一次删除", "现在没有应用在播放",
+    "通道名称", "名称不能重复。已经用过的建议会变灰", "自定义名称…", "通道 %d",
+    "请输入名称", "这个名称已经有了", "名称最多 32 个字", "名称里不能有这个字符",
+    "音乐", "音效板", "浏览器", "游戏", "视频", "语音聊天", "系统声音",
+    "无法更改混音（systemctl / wpctl）",
 };
 
 }  // namespace

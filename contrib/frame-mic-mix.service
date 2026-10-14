@@ -1,0 +1,13 @@
+[Unit]
+Description=Frame Mic Mix (filtered mic + channel bus)
+After=pipewire.service
+BindsTo=pipewire.service
+
+[Service]
+Type=simple
+ExecStart=%h/.local/lib/frame-mic-tuner/frame-mic-mix-run.sh core
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=pipewire.service
