@@ -25,6 +25,7 @@ add_executable(frame-mic-tuner
   src/command.cpp
   src/mic_state.cpp
   src/mix_channels.cpp
+  src/mix_meter.cpp
   src/mic_worker.cpp
   src/outputs.cpp
   src/output_sync.cpp

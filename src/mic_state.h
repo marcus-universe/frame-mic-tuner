@@ -103,6 +103,8 @@ struct MicState {
     bool inUse = false;         ///< マイク使用中（通り道にフィルターが入っている）
     bool muteKnown = false;     ///< 既定のマイクのミュートが読めたか
     bool muted = false;         ///< 既定のマイクがミュートされている（Steam・wpctl・aux ボタンなど、どこから入っても）
+    bool sourceVolumeKnown = false;  ///< 既定のマイクの音量が読めたか
+    double sourceVolume = 1.0;       ///< 既定のマイクの音量（線形。wpctl get-volume @DEFAULT_AUDIO_SOURCE@）
     std::vector<ChainStage> chain;   ///< マイクと出力の間に入っているフィルター（順番どおり）
     std::vector<std::string> users;  ///< マイクから音を取っているノード（--print 用）
     Autostart autostart = Autostart::Unknown;
@@ -156,12 +158,30 @@ Autostart parseAutostart(const std::string& text);
  */
 bool parseMute(const std::string& text, bool& muted);
 
+/** wpctl で既定のマイクを指す名前（ミュートと音量）。 */
+inline constexpr const char* kDefaultSource = "@DEFAULT_AUDIO_SOURCE@";
+
+/**
+ * 「wpctl get-volume」の出力から音量の数字を読む（例: "Volume: 0.35 [MUTED]" → 0.35）。
+ * @param text 出力
+ * @param linear 読めたときの線形の音量
+ * @return 読めたら true
+ */
+bool parseSourceVolume(const std::string& text, double& linear);
+
 /**
  * 既定のマイクをミュートする・解除する（wpctl set-mute @DEFAULT_AUDIO_SOURCE@ 1|0）。なったかは読み返して確かめる。
  * @param muted ミュートするなら true、解除するなら false
  * @return そうなったら true
  */
 bool writeMute(bool muted);
+
+/**
+ * 既定のマイクの音量を決める（wpctl set-volume @DEFAULT_AUDIO_SOURCE@）。ミックスの中のループバックではない。
+ * @param linear 線形の音量（0〜1.5）
+ * @return 書けたら true
+ */
+bool writeDefaultSourceVolume(double linear);
 
 /**
  * 「pw-dump ns_capture」の出力（JSON）から、ノードの id と判定の厳しさ・余韻を読む。

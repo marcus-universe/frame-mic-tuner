@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 class FontSet;
@@ -73,14 +74,17 @@ enum class PanelAction {
     MixMicSlider,     ///< マイクの音量（key = ノード名）
     MixToMicSlider,   ///< チャンネルをマイクへ（index = チャンネル、key = ノード名）
     MixToPhonesSlider,///< チャンネルをヘッドホンへ
+    MixToMicMute,     ///< チャンネルのマイク送りをミュート（key = ノード名）
+    MixToPhonesMute,  ///< チャンネルのスピーカー送りをミュート
     MixAdd,           ///< チャンネルを足す（候補の画面を開く）
     MixDelete,        ///< チャンネルを消す（key = id。2 回目で確定）
     MixRename,        ///< 名前を変える（key = id）
     MixSuggest,       ///< 候補の名前（key = 名前）
     MixCustom,        ///< キーボードで名前を付ける
-    LanguageJa,
-    LanguageEn,
-    LanguageSc,
+    MixUseApp,        ///< 動いているアプリを、その名前のチャンネルへ（key = アプリ名）
+    MixRefreshApps,   ///< 動いているアプリの一覧をすぐ読み直す
+    LanguageMenu,     ///< 言語の一覧を開く・閉じる
+    LanguagePick,     ///< 言語を選ぶ（index = Language の番号、key = 言語コード）
     AutostartOn,      ///< SteamVR と一緒に起動: オン
     AutostartOff,     ///< SteamVR と一緒に起動: オフ
     Quit,             ///< 終了（2 回目の押下で確定したときだけ返る）
@@ -254,6 +258,58 @@ public:
     void holdMixVolume(const std::string& node, double percent, double until);
 
     /**
+     * まだ表示に保っている音量。
+     * @param node ノード名
+     * @param percent 保っているパーセント
+     * @return 保っているあいだなら true
+     */
+    bool heldMixVolume(const std::string& node, double& percent) const;
+
+    /**
+     * 読み直しが動かした音量と一致したら、表示の固定をやめる。
+     * @param node ノード名
+     */
+    void clearMixVolumeHold(const std::string& node);
+
+    /**
+     * チャンネルのミュートを、読み直しが追いつくまで表示に使う。
+     * @param node ノード名
+     * @param muted ミュートするなら true
+     * @param until この時刻まで
+     */
+    void holdMixMute(const std::string& node, bool muted, double until);
+
+    /**
+     * まだ表示に保っているミュート。
+     * @param node ノード名
+     * @param muted 保っている値
+     * @return 保っているあいだなら true
+     */
+    bool heldMixMute(const std::string& node, bool& muted) const;
+
+    /**
+     * 読み直しが押したミュートと一致したら、表示の固定をやめる。
+     * @param node ノード名
+     */
+    void clearMixMuteHold(const std::string& node);
+
+    /**
+     * ノードがまだ無いあいだ、スライダーに出してあとからかけるパーセントを覚える。
+     * @param node ノード名
+     * @param percent 0〜150
+     */
+    void wantMixVolume(const std::string& node, double percent);
+
+    /**
+     * 覚えたパーセントを忘れる（ノードへ書けたとき）。
+     * @param node ノード名
+     */
+    void clearWantedMix(const std::string& node);
+
+    /** @return まだ書けていない音量（ノード名とパーセント） */
+    std::vector<std::pair<std::string, double>> wantedMixVolumes() const;
+
+    /**
      * 名前のエラーをしばらく出す。
      * @param text 文言
      * @param until この時刻まで
@@ -359,6 +415,12 @@ public:
      * @param key 出口のキー
      */
     void setViewedOutputForPreview(const std::string& key) { viewKey_ = key; }
+
+    /**
+     * ミックスのピーク（線形 0〜1、フェーダーの前）。描く直前に渡す。グラフの比較には入れない。
+     * @param peaks ノード名（既定マイクは @DEFAULT_AUDIO_SOURCE@、チャンネルはシンク名）とピーク
+     */
+    void setMixPeaks(std::vector<std::pair<std::string, float>> peaks);
     /**
      * 入れる前の確認の画面を出す。
      * @param key 呼び名（空ならメニュー）
@@ -383,9 +445,12 @@ private:
         PanelAction action;
         double x0, x1;      ///< 溝の左端・右端（px）
         double min, max;    ///< 値の範囲
-        double cy;          ///< 溝の縦の真ん中（px）
+        double cy;          ///< 溝の縦の真ん中（px）。縦バーもここ（trackCenter がこの点を返す）
         int index = 0;      ///< 同じ操作のバーを区別する（チャンネルの番号）
         std::string node;   ///< ミックスの音量ノード名
+        bool vertical = false;  ///< ミックスのカプセル（上端が max、下端が min）
+        double y0 = 0;      ///< 縦バーの上端（px、150%）
+        double y1 = 0;      ///< 縦バーの下端（px、0%）
     };
 
     const FontSet& fonts_;
@@ -403,6 +468,7 @@ private:
     std::string viewKey_;          ///< 選んで設定を表示している出口（空 = 今の出口）
     std::string viewedKey_;        ///< 最後に描いたときに表示していた出口
     bool viewingActive_ = true;
+    bool languageOpen_ = false;  ///< 言語の一覧が開いている
     bool quitArmed_ = false;
     double quitArmedUntil_ = 0.0;
     bool updateArmed_ = false;     ///< 「更新する」の 1 回目が押された（確認の表示）
@@ -411,9 +477,19 @@ private:
     PanelAction dragAction_ = PanelAction::None;
     int dragIndex_ = 0;
     double dragValue_ = 0.0;
-    std::string holdMixNode_;
-    double holdMixPercent_ = 100.0;
-    double holdMixUntil_ = -1.0;
+    struct HeldMixVolume {
+        std::string node;
+        double percent = 100.0;
+        double until = -1.0;
+    };
+    std::vector<HeldMixVolume> heldMixVolumes_;  ///< スライダーを動かした直後の音量
+    struct HeldMixMute {
+        std::string node;
+        bool muted = false;
+        double until = -1.0;
+    };
+    std::vector<HeldMixMute> heldMixMutes_;  ///< アイコンを押した直後のミュート
+    std::vector<std::pair<std::string, double>> wantedMix_;  ///< ノードが無いあいだのパーセント
     std::string deleteArmed_;       ///< 消す確認中のチャンネル id
     double deleteArmedUntil_ = 0.0;
     std::string nameError_;
@@ -433,19 +509,27 @@ private:
     bool listDragging_ = false;     ///< 押したまま動かしてスクロールしている
     PanelHit listPress_;            ///< 押した行・ボタン（ドラッグせずに離したら返す）
     double listStartY_ = 0.0;
+    double listStartX_ = 0.0;
     double listStartScroll_ = 0.0;
+    bool listHorizontal_ = false;  ///< ミックスのチャンネル列（バーは下。ほかの一覧は縦）
+    bool mixWide_ = false;         ///< 直前がミックスの幅だった（タブを開いたときだけスクロールを戻す）
+    std::vector<std::pair<std::string, float>> mixPeaks_;  ///< フェーダー前のピーク（描画用）
     // ほかのアプリを入れる前の確認
     std::string confirmKey_;                         ///< 入れるアプリの呼び名（空ならメニュー）
     PanelOverlay confirmBack_ = PanelOverlay::None;  ///< やめたときに戻る画面（一覧から開いたなら一覧）
     frame_apps::LaunchResult launchResult_ = frame_apps::LaunchResult::Started;  ///< 最後に開けなかった理由（Started なら無し）
 
     /**
-     * バーの溝の上の x から値を出す（範囲に丸める）。
+     * バーの溝の位置から値を出す（範囲に丸める）。縦のミックスバーは 100% の近くで吸い付く。
      * @param track 溝
      * @param x 左端からの px
+     * @param y 上端からの px
      * @return 値
      */
-    static double trackValue(const Track& track, double x);
+    static double trackValue(const Track& track, double x, double y);
+
+    /** @return ミックスのピーク。無ければ 0 */
+    float mixPeak(const std::string& key) const;
 
     /**
      * 座標にある押せるボタンを探す（後から描いたもの = 上にあるものが先）。
@@ -477,7 +561,7 @@ private:
     // ---- 描く ----
     void drawHeader(const frame_ui::Canvas& ui, const UiText& t, const PanelModel& model);
     void drawSettings(const frame_ui::Canvas& ui, const UiText& t, const Config& config, const PanelModel& model);
-    void drawSelectors(const frame_ui::Canvas& ui, const UiText& t, const Config& config, const PanelModel& model);
+    void drawSelectors(const frame_ui::Canvas& ui, const UiText& t, const Config& config, const PanelModel& model, bool wide);
     void drawQuick(const frame_ui::Canvas& ui, const UiText& t, const Config& config, const PanelModel& model,
                    bool echo, bool ns, bool known, const std::string& outputName);
     void drawFine(const frame_ui::Canvas& ui, const UiText& t, const PanelModel& model, bool echo, bool ns, bool known,
@@ -485,13 +569,23 @@ private:
     void drawExternal(const frame_ui::Canvas& ui, const UiText& t, const PanelModel& model, bool echo, bool ns,
                       const std::string& outputName);
     void drawPipeline(const frame_ui::Canvas& ui, const UiText& t, const MicState& state, bool external);
-    void drawVoice(const frame_ui::Canvas& ui, const UiText& t, const VoiceView& voice);
+    void drawVoice(const frame_ui::Canvas& ui, const UiText& t, const VoiceView& voice, const frame_ui::Rect& card);
     void drawApps(const frame_ui::Canvas& ui, const UiText& t, const Config& config, const PanelModel& model);
     void drawUpdateBox(const frame_ui::Canvas& ui, const UiText& t, frame_ui::Lang lang, const Config& config,
                        const frame_updater::UpdateStatus& update, frame_ui::Rect box);
     void drawFooter(const frame_ui::Canvas& ui, const UiText& t, const Config& config, const MicState& state);
+    /** 開いている言語の一覧（足の上に重ねる）。 */
+    void drawLanguageMenu(const frame_ui::Canvas& ui, Language current);
     void drawMix(const frame_ui::Canvas& ui, const UiText& t, const Config& config, const PanelModel& model);
-    void drawMixSuggest(const frame_ui::Canvas& ui, const UiText& t, const Config& config);
+    void drawMixSuggest(const frame_ui::Canvas& ui, const UiText& t, const Config& config, const PanelModel& model);
+
+    /**
+     * 覚えたミックス音量があれば返す。
+     * @param node ノード名
+     * @param percent 書き込み先
+     * @return 覚えていれば true
+     */
+    bool wantedMixPercent(const std::string& node, double& percent) const;
     void drawOutputPicker(const frame_ui::Canvas& ui, const UiText& t, const Config& config, const PanelModel& model);
     void drawMicPicker(const frame_ui::Canvas& ui, const UiText& t, const PanelModel& model);
     /** アプリと更新の画面の右のカード（いっしょに使うアプリと、一覧を開く行）。 */
@@ -514,7 +608,7 @@ private:
      * @param box 見えている枠
      * @param contentH 中身の高さ
      */
-    void beginList(frame_ui::Rect box, double contentH);
+    void beginList(frame_ui::Rect box, double content, bool horizontal = false);
     /** 一覧のスクロールバーと、下に続きがあるときの下の端のぼかしを描く。 */
     void endList(const frame_ui::Canvas& ui, double contentH, double barX);
 };

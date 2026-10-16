@@ -35,7 +35,8 @@ if [[ "$mode" == "core" ]]; then
     start \
         --capture-props="{ media.class = Audio/Sink node.name = frame_micmix_sink node.description = \"Frame Mix Bus\" node.virtual = true audio.position = [ FL FR ] priority.session = 1 media.name = \"Frame Mix Bus\" }" \
         --playback-props="{ media.class = Audio/Source node.name = frame_micmix_source node.description = \"Frame Mic + Mix\" audio.position = [ FL FR ] priority.session = 2000 media.name = \"Frame Mic + Mix\" }"
-    # Filtered built-in mic into the bus. Volume of the playback node is the mic slider.
+    # Filtered built-in mic into the bus at unity. The Microphone slider sets the
+    # default source volume, which this capture already hears.
     start \
         --capture-props="{ node.name = frame_micmix_from_mic target.object = \"$mic_source\" node.passive = true node.virtual = true audio.position = [ FL FR ] stream.dont-remix = true media.name = \"Frame Mix from mic\" }" \
         --playback-props="{ node.name = frame_micmix_mic_virtual_sink target.object = frame_micmix_sink node.passive = true node.virtual = true media.name = \"Frame Mix mic level\" }"

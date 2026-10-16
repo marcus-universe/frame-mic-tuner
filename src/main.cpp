@@ -7,6 +7,7 @@
 #include "mic_panel.h"
 #include "mic_state.h"
 #include "mic_worker.h"
+#include "mix_meter.h"
 #include "output_sync.h"
 #include "outputs.h"
 #include "self_test.h"
@@ -69,7 +70,7 @@ struct Options {
     std::string pngPath;
     std::string thumbnailPngPath;
     int thumbnailSize = 256;       ///< --thumbnail-png で書き出す一辺（px）
-    std::string language;          ///< 空でなければ PNG の書き出しで設定の言語の代わりに使う（ja / en）
+    std::string language;          ///< 空でなければ PNG の書き出しで設定の言語の代わりに使う（ja / en / sc / de / fr / es / it）
     bool previewQuit = false;      ///< 「もう一度押すと終了」の状態で描く
     std::vector<MicCommand> sets;  ///< --set-echo などの書き込み（--print の前に実行する）
     // 見た目の確認用のダミーの状態（どれか 1 つでも付けると、実際の値を読まずにダミーで描く）
@@ -192,7 +193,7 @@ void printUsage() {
         "  --dump-png PATH       OpenVR なしでパネルの画像を PNG に書き出して終わる（今の値で描く）\n"
         "  --thumbnail-png PATH  ダッシュボードのサムネイル（＋のアイコンと同じ絵）を PNG に書き出す\n"
         "      --thumbnail-size N  そのサムネイルの一辺（既定 256）\n"
-        "      --language ja|en|sc  設定の言語の代わりにこの言語で描く\n"
+        "      --language ja|en|sc|de|fr|es|it  設定の言語の代わりにこの言語で描く\n"
         "      --preview-quit    「もう一度押すと終了」の状態で描く\n"
         "      --tab quick|fine|mix  設定のタブの代わりに、このタブ（かんたん / 細かく調整 / ミックス）で描く\n"
         "      --fake-mix N      ミックスのタブを、チャンネル N 個（0〜8）のダミーで描く\n"
@@ -291,7 +292,7 @@ bool parseOptions(int argc, char** argv, Options& options) {
             options.language = argv[++i];
             Language check;
             if (!parseLanguage(options.language, check)) {
-                std::fprintf(stderr, "--language は ja / en / sc です: %s\n", options.language.c_str());
+                std::fprintf(stderr, "--language は ja / en / sc / de / fr / es / it です: %s\n", options.language.c_str());
                 return false;
             }
         } else if (arg == "--preview-quit") {
@@ -705,7 +706,8 @@ int runPrint(const Options& options) {
             case MicCommand::Kind::AddChannel:
             case MicCommand::Kind::RenameChannel:
             case MicCommand::Kind::RemoveChannel:
-            case MicCommand::Kind::SetMixVolume: break;
+            case MicCommand::Kind::SetMixVolume:
+            case MicCommand::Kind::SetMixMute: break;
         }
         if (!ok) {
             writeError = command.kind == MicCommand::Kind::SetAutostart ? MicError::WriteAutostart
@@ -961,7 +963,7 @@ frame_apps::ManagerConfig makeAppsConfig() {
 }
 
 /**
- * このアプリの言語を frame-apps の言語にする（frame-apps は日英だけなので、簡体字中国語は英語の説明）。
+ * このアプリの言語を frame-apps の言語にする（frame-apps は日英だけ。それ以外は英語の説明）。
  * @param language 言語
  * @return frame-apps の言語
  */
@@ -1070,12 +1072,12 @@ int runDumpPng(const Options& options) {
                                                                       : LaunchResult::Failed);
         }
         if (options.fakeMix >= 0 || options.overlay == "suggest") {
-            config.tab = PanelTab::Mix;
+            if (options.tab.empty() || options.overlay == "suggest") config.tab = PanelTab::Mix;
             if (options.fakeMix >= 0) config.mixEnabled = true;
             if (options.fakeMix >= 0) {
                 const UiText& names = uiText(config.language);
                 const char* suggestion[] = {names.suggestMusic, names.suggestBoard, names.suggestBrowser, names.suggestGame,
-                                            names.suggestVideo, names.suggestVoice, names.suggestSystem, "Extra"};
+                                            names.suggestVideo, "Extra", "Extra 2", "Extra 3"};
                 config.mixChannels.clear();
                 model.state.mix.known = true;
                 model.state.mix.settingKnown = true;
@@ -1087,6 +1089,8 @@ int runDumpPng(const Options& options) {
                 model.state.mix.mic.nodeId = 80;
                 model.state.mix.mic.linear = 0.8;
                 model.state.mix.mic.nodeName = kMixMicLevelNode;
+                model.state.sourceVolumeKnown = true;
+                model.state.sourceVolume = 0.8;
                 for (int i = 0; i < options.fakeMix; ++i) {
                     MixChannel channel;
                     channel.id = "ch" + std::to_string(i + 1);
@@ -1108,6 +1112,10 @@ int runDumpPng(const Options& options) {
                     model.state.mix.channels.push_back(live);
                 }
             }
+            if (options.overlay == "suggest") {
+                model.state.mix.playbacks.push_back({"Zen", 9, -1, ""});
+                model.state.mix.runningApps.push_back("Notes");
+            }
         }
         if (options.fakeViewing == "ab13x") panel.setViewedOutputForPreview(kFakeAb13xOut);
         if (options.fakeViewing == "past") panel.setViewedOutputForPreview("bluez_output.11_22_33_44_55_66");
@@ -1117,6 +1125,15 @@ int runDumpPng(const Options& options) {
         if (options.previewQuit) panel.armQuitForPreview();
         if (options.previewDrag != PanelAction::None) panel.setDragForPreview(options.previewDrag, options.previewDragValue);
         if (options.previewUpdateConfirm) panel.armUpdateForPreview();
+        if (options.fakeMix >= 0) {
+            // 画像確認用。実機のピークはミックスのタブを開いているときだけ測る。
+            std::vector<std::pair<std::string, float>> peaks;
+            peaks.emplace_back(kDefaultSource, 0.28f);
+            for (int i = 0; i < options.fakeMix; ++i) {
+                peaks.emplace_back(channelSinkNode("ch" + std::to_string(i + 1)), std::min(0.95f, 0.15f + 0.22f * static_cast<float>(i)));
+            }
+            panel.setMixPeaks(std::move(peaks));
+        }
         panel.render(config, model);
         if (!options.previewPressed.empty()) {
             // 押している見た目: 1 回描いてボタンの位置を知り、そこにポインターを置いて描き直す
@@ -1340,6 +1357,11 @@ int runSelfTest() {
     expect("wpctl get-volume: 不正な出力（空・エラー文・数字なし・知らない印）→ 読めない（値は変えない）",
            !parseMute("", muted) && !parseMute("Translate ID error: '@DEFAULT_AUDIO_SOURCE@' is not a valid ID\n", muted) &&
                !parseMute("Volume: \n", muted) && !parseMute("Volume: 1.00 [WHAT]\n", muted) && muted);
+    double source = 0.0;
+    expect("wpctl get-volume: 音量の数字（ミュート印があっても）",
+           parseSourceVolume("Volume: 1.00\n", source) && std::abs(source - 1.0) < 0.001 &&
+               parseSourceVolume("Volume: 0.35 [MUTED]\n", source) && std::abs(source - 0.35) < 0.001 &&
+               !parseSourceVolume("", source) && !parseSourceVolume("Volume: \n", source));
 
     // 設定ファイル: タブ（と言語・ノイズ除去の強さ）を保存して読み直すと同じになる（一時ファイルで試して消す）
     {
@@ -1372,8 +1394,8 @@ int runSelfTest() {
     FontSet fonts;
     fonts.load(kFontPath, kBoldFontPath);
 
-    // 文言の表: 3 つの言語とも、どのフィールドも空でない（表の並びの数の食い違いに気づく）
-    for (const Language language : {Language::Ja, Language::En, Language::Sc}) {
+    // 文言の表: どの言語も、どのフィールドも空でない（表の並びの数の食い違いに気づく）
+    for (const Language language : kLanguages) {
         const UiText& t = uiText(language);
         const char* const* field = reinterpret_cast<const char* const*>(&t);
         bool filled = true;
@@ -1382,6 +1404,9 @@ int runSelfTest() {
         }
         const std::string what = std::string("文言の表: ") + languageCode(language) + " のどのフィールドも空でない";
         expect(what.c_str(), filled);
+        Language parsed = Language::Ja;
+        expect((std::string("言語: ") + languageCode(language) + " を読み直すと同じ").c_str(),
+               parseLanguage(languageCode(language), parsed) && parsed == language && languageEndonym(language)[0] != '\0');
     }
 
     /**
@@ -1467,13 +1492,48 @@ int runSelfTest() {
         expect("更新: 確認の「更新する」で UpdateConfirmYes を返す", second.action == PanelAction::UpdateConfirmYes);
     }
 
-    // ミュート: 「ミュートする」「ミュートを解除」は同じ位置・同じ幅（3 言語とも）。確認なしの 1 回で返す。読めないときは押せない
+    // 言語: 足のドロップダウンを開くと選べて、隣を押すと閉じるだけ
+    {
+        MicPanel panel(fonts);
+        Config config;
+        PanelModel model = loadedModel(false);
+        panel.render(config, model);
+        double x = 0.0;
+        double y = 0.0;
+        const bool hasMenu = panel.buttonCenter(PanelAction::LanguageMenu, x, y);
+        const PanelHit opened = panel.pointerDown(x, y, 0.0);
+        panel.pointerUp();
+        panel.render(config, model);
+        double dx = 0.0;
+        double dy = 0.0;
+        const bool hasGerman = panel.buttonCenter(PanelAction::LanguagePick, dx, dy, "de");
+        const PanelHit picked = panel.pointerDown(dx, dy, 0.1);
+        panel.pointerUp();
+        panel.render(config, model);
+        expect("言語: メニューを開くと Deutsch を選べる",
+               hasMenu && opened.action == PanelAction::None && hasGerman && picked.action == PanelAction::LanguagePick &&
+                   picked.key == "de");
+        panel.render(config, model);
+        const bool closed = !panel.buttonCenter(PanelAction::LanguagePick, dx, dy, "de");
+        panel.buttonCenter(PanelAction::LanguageMenu, x, y);
+        panel.pointerDown(x, y, 0.2);
+        panel.pointerUp();
+        panel.render(config, model);
+        const bool reopened = panel.buttonCenter(PanelAction::LanguagePick, dx, dy, "de");
+        panel.buttonCenter(PanelAction::LanguageMenu, x, y);
+        panel.pointerDown(x, y, 0.3);
+        panel.pointerUp();
+        panel.render(config, model);
+        expect("言語: もう一度押すと一覧が閉じる", closed && reopened && !panel.buttonCenter(PanelAction::LanguagePick, dx, dy, "de"));
+    }
+
+    // ミュート: 「ミュートする」「ミュートを解除」は同じ位置・同じ幅（どの言語でも）。確認なしの 1 回で返す。読めないときは押せない
     {
         MicPanel panel(fonts);
         Config config;
         PanelModel model = loadedModel(false);
         bool same = true;
-        for (const Language language : {Language::Ja, Language::En, Language::Sc}) {
+        for (const Language language : kLanguages) {
             config.language = language;
             for (const bool muted : {false, true}) {
                 model.state.muted = muted;
@@ -1482,7 +1542,7 @@ int runSelfTest() {
                 same = same && r.x == 324 && r.y == 22 && r.w == 220 && r.h == 56;
             }
         }
-        expect("ミュート: ボタンはミュートしてもしなくても、3 言語とも同じ位置・幅（324, 22, 220×56）", same);
+        expect("ミュート: ボタンはミュートしてもしなくても、どの言語でも同じ位置・幅（324, 22, 220×56）", same);
         double x = 0.0;
         double y = 0.0;
         panel.buttonCenter(PanelAction::MuteToggle, x, y);
@@ -1628,6 +1688,9 @@ int runSelfTest() {
         model.state.mix.mic.known = true;
         model.state.mix.mic.linear = 1.0;
         model.state.mix.mic.nodeName = kMixMicLevelNode;
+        model.state.sourceVolumeKnown = true;
+        model.state.sourceVolume = 1.0;
+        panel.setMixPeaks({{std::string(kDefaultSource), 0.22f}, {channelSinkNode("ch1"), 0.55f}});
         MixChannelLive live;
         live.id = "ch1";
         live.running = true;
@@ -1641,13 +1704,49 @@ int runSelfTest() {
         panel.render(config, model);
         double x = 0.0;
         double y = 0.0;
-        expect("ミックス: オン・足す・消す・名前・2 本のバーがある",
+        expect("ミックス: オン・足す・消す・名前・声の録音・2 本のバーがある",
                panel.buttonCenter(PanelAction::MixOn, x, y) && panel.buttonCenter(PanelAction::MixAdd, x, y) &&
                    panel.buttonCenter(PanelAction::MixDelete, x, y, "ch1") &&
                    panel.buttonCenter(PanelAction::MixRename, x, y, "ch1") &&
+                   panel.buttonCenter(PanelAction::Record, x, y) &&
                    panel.trackCenter(PanelAction::MixMicSlider, x, y) &&
                    panel.trackCenter(PanelAction::MixToMicSlider, x, y) &&
                    panel.trackCenter(PanelAction::MixToPhonesSlider, x, y));
+        double micX = 0.0;
+        double micY = 0.0;
+        double toMicX = 0.0;
+        double toMicY = 0.0;
+        double phonesX = 0.0;
+        double phonesY = 0.0;
+        panel.buttonCenter(PanelAction::TabMix, x, y);
+        const bool wideTabs = x > 560.0;
+        const bool verticalStrips = panel.trackCenter(PanelAction::MixMicSlider, micX, micY) &&
+                                    panel.trackCenter(PanelAction::MixToMicSlider, toMicX, toMicY) &&
+                                    panel.trackCenter(PanelAction::MixToPhonesSlider, phonesX, phonesY) && micX < toMicX &&
+                                    toMicX < phonesX && std::fabs(toMicY - phonesY) < 12.0;
+        panel.pointerDown(micX, micY, 2.0);
+        int at100 = 0;
+        bool above100 = false;
+        std::string dragNode;
+        double dragPercent = 0.0;
+        for (int step = 0; step <= 90; ++step) {
+            panel.pointerMove(micX, micY - step);
+            if (!panel.mixDrag(dragNode, dragPercent)) continue;
+            if (dragPercent == 100.0) ++at100;
+            if (dragPercent >= 110.0) above100 = true;
+        }
+        panel.pointerUp();
+        expect("ミックス: タブは広い列、バーは縦、100% の近くで吸い付く", wideTabs && verticalStrips && at100 >= 4 && above100);
+        model.state.mix.mic.known = false;
+        model.state.mix.channels[0].toMic.known = false;
+        model.state.mix.channels[0].toPhones.known = false;
+        panel.render(config, model);
+        expect("ミックス: 音量がまだ無くてもバーは押せる",
+               panel.trackCenter(PanelAction::MixMicSlider, x, y) && panel.trackCenter(PanelAction::MixToMicSlider, x, y) &&
+                   panel.trackCenter(PanelAction::MixToPhonesSlider, x, y));
+        model.state.mix.mic.known = true;
+        model.state.mix.channels[0].toMic.known = true;
+        model.state.mix.channels[0].toPhones.known = true;
         panel.buttonCenter(PanelAction::MixDelete, x, y, "ch1");
         panel.pointerDown(x, y, 1.0);
         const PanelHit first = panel.pointerUp();
@@ -1658,11 +1757,40 @@ int runSelfTest() {
         expect("ミックス: 消すは 1 回目では何も返さず、2 回目で MixDelete",
                first.action == PanelAction::None && second.action == PanelAction::MixDelete && second.key == "ch1");
         panel.showForPreview(PanelView::Settings, PanelOverlay::MixSuggest);
+        model.state.mix.playbacks.push_back({"Zen", 9, -1, ""});
         panel.render(config, model);
         expect("ミックス: 使っている候補は押せない。空いている候補と自分の名前は押せる",
                !panel.buttonCenter(PanelAction::MixSuggest, x, y, "Music") &&
                    panel.buttonCenter(PanelAction::MixSuggest, x, y, "Soundboard") &&
                    panel.buttonCenter(PanelAction::MixCustom, x, y));
+        expect("ミックス: 動いているアプリを選べる", panel.buttonCenter(PanelAction::MixUseApp, x, y, "Zen"));
+        expect("ミックス: ボイスチャットとシステム音は候補に無い",
+               !panel.buttonCenter(PanelAction::MixSuggest, x, y, "Voice chat") &&
+                   !panel.buttonCenter(PanelAction::MixSuggest, x, y, "System sounds"));
+        model.state.mix.runningApps = {"Notes"};
+        panel.render(config, model);
+        expect("ミックス: 音を出していないアプリも選べて、更新ボタンがある",
+               panel.buttonCenter(PanelAction::MixUseApp, x, y, "Notes") &&
+                   panel.buttonCenter(PanelAction::MixRefreshApps, x, y));
+        model.state.mix.runningApps.clear();
+        for (int i = 0; i < 16; ++i) model.state.mix.runningApps.push_back("App" + std::to_string(i));
+        panel.render(config, model);
+        const bool hiddenBefore = !panel.buttonCenter(PanelAction::MixUseApp, x, y, "App12");
+        const bool appScrolled = panel.scroll(-2.0);
+        panel.render(config, model);
+        const bool shownAfter = panel.buttonCenter(PanelAction::MixUseApp, x, y, "App12");
+        expect("ミックス: ソフトの一覧はスティックでスクロールできる", hiddenBefore && appScrolled && shownAfter);
+        panel.closeOverlay();
+        for (int i = 2; i <= 8; ++i) config.mixChannels.push_back({"ch" + std::to_string(i), "Ch " + std::to_string(i)});
+        panel.render(config, model);
+        double beforeX = 0.0;
+        panel.buttonCenter(PanelAction::MixDelete, beforeX, y, "ch1");
+        const bool scrolled = panel.scroll(-1.0);
+        panel.render(config, model);
+        double afterX = 0.0;
+        panel.buttonCenter(PanelAction::MixDelete, afterX, y, "ch1");
+        const bool back = panel.scroll(100.0);
+        expect("ミックス: チャンネルが多いときは横にスクロールできる", scrolled && back && afterX < beforeX - 40.0);
     }
 
     // 音の出口: 一覧の読み取り（Frame で取った pw-dump・pw-metadata）・キー・出口ごとの設定のかけ方・設定ファイル
@@ -1794,6 +1922,7 @@ int runOverlay(const Options& options) {
     // 保存したノイズ除去の強さがあれば、ノードが見つかりしだいかける（SteamOS は PipeWire の起動のたびに既定値に戻す）。
     // 出口ごとの設定が読めたら、そちら（OutputSync が今の出口の設定をかける）が優先する
     if (config.hasNsParams) worker.setDesiredNsParams(config.nsVad, config.nsGrace);
+    worker.setMixPins(config.mixPins);
     if (config.mixEnabled) {
         MicCommand mix {MicCommand::Kind::MixEnable};
         mix.value = true;
@@ -1810,6 +1939,8 @@ int runOverlay(const Options& options) {
         if (!saveConfig(options.configPath, config, error)) std::fprintf(stderr, "[設定] 保存に失敗: %s\n", error.c_str());
     };
     VoiceCheck voice;
+    MixMeter meter;
+    std::string meterKey;
     VrOverlay vr;
     // ほかのアプリの一覧（vendor/frame-apps）。サイトから取ってくるのは「新しい版の確認」がオンのときだけ（1 時間に 1 回まで。
     // 取れなければ前回の分 → 同梱の一覧）
@@ -1993,7 +2124,6 @@ int runOverlay(const Options& options) {
      * @param tab 切り替え先
      */
     const auto mixNodeIdOf = [&](const std::string& node) {
-        if (node == kMixMicLevelNode && state.mix.mic.known) return state.mix.mic.nodeId;
         for (const MixChannelLive& channel : state.mix.channels) {
             if (channel.toMic.nodeName == node && channel.toMic.known) return channel.toMic.nodeId;
             if (channel.toPhones.nodeName == node && channel.toPhones.known) return channel.toPhones.nodeId;
@@ -2002,7 +2132,11 @@ int runOverlay(const Options& options) {
     };
     const auto sendMixVolume = [&](const std::string& node, double percent) {
         const int nodeId = mixNodeIdOf(node);
-        if (nodeId < 0) return;
+        if (node != kDefaultSource && nodeId < 0) {
+            panel.wantMixVolume(node, percent);
+            return;
+        }
+        panel.clearWantedMix(node);
         const double linear = clampMixLinear(percent);
         if (node == sentMixNode && std::abs(linear - sentMixLinear) < 0.001) return;
         MicCommand command {MicCommand::Kind::SetMixVolume};
@@ -2013,7 +2147,7 @@ int runOverlay(const Options& options) {
         sentMixNode = node;
         sentMixLinear = linear;
         lastNsSendAt = nowSeconds();
-        panel.holdMixVolume(node, linear * 100.0, nowSeconds() + 1.5);
+        panel.holdMixVolume(node, linear * 100.0, nowSeconds() + 4.0);
     };
     const auto commitDrag = [&](bool save) {
         std::string node;
@@ -2040,9 +2174,9 @@ int runOverlay(const Options& options) {
      * @param normalized 整えた名前
      */
     const auto addMixChannel = [&](const std::string& normalized) {
-        if (static_cast<int>(config.mixChannels.size()) >= kMixChannelMax) return;
+        if (static_cast<int>(config.mixChannels.size()) >= kMixChannelMax) return std::string();
         const std::string id = nextChannelId(config.mixChannels);
-        if (id.empty()) return;
+        if (id.empty()) return std::string();
         config.mixChannels.push_back({id, normalized});
         config.tab = PanelTab::Mix;
         saveNow();
@@ -2053,6 +2187,19 @@ int runOverlay(const Options& options) {
         command.value = config.mixEnabled;
         worker.request(command);
         std::fprintf(stderr, "[ミックス] チャンネル %s「%s」を足しました\n", id.c_str(), normalized.c_str());
+        return id;
+    };
+    const auto rememberPin = [&](const std::string& app, const std::string& id) {
+        for (MixPin& pin : config.mixPins) {
+            if (pin.app != app) continue;
+            pin.id = id;
+            saveNow();
+            worker.setMixPins(config.mixPins);
+            return;
+        }
+        config.mixPins.push_back({app, id});
+        saveNow();
+        worker.setMixPins(config.mixPins);
     };
     const auto switchTab = [&](PanelTab tab) {
         commitDrag(true);
@@ -2097,7 +2244,10 @@ int runOverlay(const Options& options) {
             case PanelAction::MixMicSlider:
             case PanelAction::MixToMicSlider:
             case PanelAction::MixToPhonesSlider:
-            case PanelAction::MixAdd: break;      // 候補の画面はパネルの中で開く
+            case PanelAction::MixAdd:              // 候補の画面はパネルの中で開く。開いたらすぐ読み直す
+            case PanelAction::MixRefreshApps:
+                worker.refreshMixNow();
+                break;
             case PanelAction::ShowApps: apps.refreshIfStale(0); break;  // 入っているか・動いているかを見直す
             case PanelAction::AppsOpenList:
                 // 一覧を開いたら、古ければサイトから取りに行く（オンのときだけ・1 時間に 1 回まで）
@@ -2147,6 +2297,35 @@ int runOverlay(const Options& options) {
                 std::fprintf(stderr, "[ミックス] PC のマイクへ%s\n", on ? "流します" : "流すのをやめます");
                 break;
             }
+            case PanelAction::MixToMicMute:
+            case PanelAction::MixToPhonesMute: {
+                const int nodeId = mixNodeIdOf(hit.key);
+                if (nodeId < 0) break;
+                bool muted = false;
+                bool found = false;
+                for (const MixChannelLive& channel : state.mix.channels) {
+                    if (channel.toMic.nodeName == hit.key && channel.toMic.known) {
+                        muted = channel.toMic.muted;
+                        found = true;
+                    }
+                    if (channel.toPhones.nodeName == hit.key && channel.toPhones.known) {
+                        muted = channel.toPhones.muted;
+                        found = true;
+                    }
+                }
+                bool held = false;
+                if (panel.heldMixMute(hit.key, held)) muted = held;
+                if (!found && !panel.heldMixMute(hit.key, held)) break;
+                const bool next = !muted;
+                MicCommand command {MicCommand::Kind::SetMixMute};
+                command.nodeId = nodeId;
+                command.nodeName = hit.key;
+                command.value = next;
+                worker.request(command);
+                panel.holdMixMute(hit.key, next, nowSeconds() + 4.0);
+                std::fprintf(stderr, "[ミックス] %s を%s\n", hit.key.c_str(), next ? "ミュート" : "ミュート解除");
+                break;
+            }
             case PanelAction::MixSuggest: {
                 std::string normalized;
                 const MixNameError error = validateChannelName(hit.key, config.mixChannels, "", normalized);
@@ -2156,6 +2335,34 @@ int runOverlay(const Options& options) {
                     break;
                 }
                 addMixChannel(normalized);
+                break;
+            }
+            // 動いているアプリを選ぶと、その名前のチャンネルを作り、そのアプリをそこへ向ける
+            case PanelAction::MixUseApp: {
+                const UiText& text = uiText(config.language);
+                const std::string name = channelNameFromApp(hit.key);
+                std::string normalized;
+                const MixNameError error = name.empty() ? MixNameError::Empty
+                                                        : validateChannelName(name, config.mixChannels, "", normalized);
+                std::string id;
+                if (error == MixNameError::Duplicate) {
+                    for (const MixChannel& channel : config.mixChannels) {
+                        std::string existing;
+                        if (validateChannelName(name, {channel}, "", existing) == MixNameError::Duplicate) id = channel.id;
+                    }
+                    panel.closeOverlay();
+                } else if (error != MixNameError::Ok) {
+                    panel.setNameError(mixNameMessage(error, text), nowSeconds() + 4.0);
+                    break;
+                } else {
+                    id = addMixChannel(normalized);
+                }
+                if (id.empty()) {
+                    if (error == MixNameError::Ok) panel.setNameError(text.mixFull, nowSeconds() + 4.0);
+                    break;
+                }
+                rememberPin(hit.key, id);
+                std::fprintf(stderr, "[ミックス] 「%s」をチャンネル %s へ向けます\n", hit.key.c_str(), id.c_str());
                 break;
             }
             case PanelAction::MixCustom: {
@@ -2184,8 +2391,12 @@ int runOverlay(const Options& options) {
                 std::fprintf(stderr, "[ミックス] チャンネル %s「%s」を消します\n", it->id.c_str(), it->name.c_str());
                 MicCommand command {MicCommand::Kind::RemoveChannel};
                 command.nodeName = it->id;
+                config.mixPins.erase(std::remove_if(config.mixPins.begin(), config.mixPins.end(),
+                                                    [&](const MixPin& pin) { return pin.id == it->id; }),
+                                     config.mixPins.end());
                 config.mixChannels.erase(it);
                 saveNow();
+                worker.setMixPins(config.mixPins);
                 worker.request(command);
                 break;
             }
@@ -2262,14 +2473,12 @@ int runOverlay(const Options& options) {
                 std::fprintf(stderr, "[操作] SteamVR と一緒に起動 %s\n", action == PanelAction::AutostartOn ? "オン" : "オフ");
                 worker.request({MicCommand::Kind::SetAutostart, action == PanelAction::AutostartOn});
                 break;
-            case PanelAction::LanguageJa:
-            case PanelAction::LanguageEn:
-            case PanelAction::LanguageSc: {
-                const Language language = action == PanelAction::LanguageJa   ? Language::Ja
-                                          : action == PanelAction::LanguageEn ? Language::En
-                                                                              : Language::Sc;
-                if (language == config.language) break;
+            case PanelAction::LanguageMenu: break;  // 開閉はパネルの中
+            case PanelAction::LanguagePick: {
+                Language language = Language::Ja;
+                if (!parseLanguage(hit.key, language) || language == config.language) break;
                 config.language = language;
+                std::fprintf(stderr, "[操作] 言語: %s\n", languageCode(language));
                 saveNow();
                 break;
             }
@@ -2376,6 +2585,7 @@ int runOverlay(const Options& options) {
             const std::string activeBefore = outputSync.activeKey();
             if (outputSync.update(state, config, todayText())) saveNow();
             if (outputSync.activeKey() != activeBefore) panel.followActiveOutput();  // 表示も新しい出口へ
+            for (const auto& wanted : panel.wantedMixVolumes()) sendMixVolume(wanted.first, wanted.second);
             dirty = true;
         }
 
@@ -2388,6 +2598,8 @@ int runOverlay(const Options& options) {
         if (!visible && wasVisible) {
             if (voice.busy()) std::fprintf(stderr, "[声] パネルが閉じたので、録音・再生を止めます\n");
             voice.shutdown();
+            meter.shutdown();
+            meterKey.clear();
             // バーをドラッグしたまま閉じたときも、最後の値を送って保存する
             commitDrag(true);
             // 次に開いたときは、マイクの設定の画面・今の出口の表示から（重ねた画面も閉じる）
@@ -2450,11 +2662,42 @@ int runOverlay(const Options& options) {
             }
         }
         dirty |= panel.tick(nowSeconds());  // 「もう一度押すと終了」の期限切れ
-        // 録音中・再生中はメーターと再生位置を動かすため、1 秒に 15 回描き直す
-        if (voice.busy() && nowSeconds() - lastVoiceFrame >= kVoiceFrameSec) dirty = true;
+        // ミックスのタブを開いている間だけ、チャンネルと既定マイクのピークを聴く
+        if (visible && config.tab == PanelTab::Mix) {
+            std::string key;
+            std::vector<MixMeterTarget> targets;
+            const AudioEndpoint* input = state.devices.findInput(state.devices.defaultInputKey);
+            if (input != nullptr && !input->nodeName.empty()) {
+                // マイクだけ受動にしない。話すだけでピークが出る。node.virtual は MixMeter が付ける。
+                MixMeterTarget mic;
+                mic.key = kDefaultSource;
+                mic.object = input->nodeName;
+                mic.captureSink = false;
+                mic.passive = false;
+                targets.push_back(std::move(mic));
+                key += input->nodeName;
+            }
+            key += "|";
+            for (const MixChannel& channel : config.mixChannels) {
+                const std::string sink = channelSinkNode(channel.id);
+                // チャンネルは受動のまま（アプリが出したときだけ。シンクのモニター）。
+                targets.push_back({sink, sink, true, true});
+                key += sink;
+                key += ",";
+            }
+            if (key != meterKey && meter.setTargets(targets)) meterKey = std::move(key);
+        } else if (!meterKey.empty()) {
+            meter.setTargets({});
+            meterKey.clear();
+            panel.setMixPeaks({});
+        }
+        // 録音中・再生中、またはミックスのタブでは、1 秒に 15 回描き直す
+        const bool mixLive = visible && config.tab == PanelTab::Mix;
+        if ((voice.busy() || mixLive) && nowSeconds() - lastVoiceFrame >= kVoiceFrameSec) dirty = true;
 
         // パネルは見えているときだけ、変化があったときだけ描く
         if (visible && (dirty || !wasVisible)) {
+            if (mixLive) panel.setMixPeaks(meter.snapshot());
             voiceView = voice.view();
             lastVoiceFrame = nowSeconds();
             drawnUpdateRevision = updater.revision();
@@ -2474,6 +2717,7 @@ int runOverlay(const Options& options) {
 
     // SIGTERM / SIGINT・SteamVR の終了・vrserver の消滅・「終了」のどれでも同じ終了処理を通す
     voice.shutdown();  // 録音・再生を止める（録った音はメモリごと消える）
+    meter.shutdown();
     vr.shutdown();
     worker.stop();
     std::fprintf(stderr, "[VR] 終了しました\n");

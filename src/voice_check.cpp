@@ -180,12 +180,14 @@ const pw_stream_events& VoiceCheck::playEvents() {
     return events;
 }
 
-pw_stream* VoiceCheck::connectStream(const char* name, bool capture) {
+pw_stream* VoiceCheck::connectStream(const char* name, bool capture, const char* target) {
     pw_properties* props = pw_properties_new(PW_KEY_MEDIA_TYPE, "Audio", PW_KEY_MEDIA_CATEGORY,
                                              capture ? "Capture" : "Playback", PW_KEY_NODE_NAME, name,
                                              PW_KEY_NODE_DESCRIPTION, "Frame Mic Tuner", PW_KEY_APP_NAME,
                                              "Frame Mic Tuner", nullptr);
-    // node.virtual は付けない（録音は tracker にマイク使用中と数えてもらう）。target も付けない（既定の入力・出力）
+    // node.virtual は付けない（録音は tracker にマイク使用中と数えてもらう）。
+    // target があるときだけそこから録る（ミックスのソース）。再生は既定の出力のまま。
+    if (target != nullptr && target[0] != '\0') pw_properties_set(props, "target.object", target);
     pw_stream* stream = pw_stream_new_simple(pw_thread_loop_get_loop(loop_), name, props,
                                              capture ? &recordEvents() : &playEvents(), this);
     if (stream == nullptr) return nullptr;
@@ -250,15 +252,19 @@ bool VoiceCheck::startRecording(const MicState& settings) {
     recordFailed_ = false;
     levelPeak_ = 0.0f;
 
+    // ミックスが動いていれば、PC が聞くのと同じソース（マイクとチャンネル）を録る。
+    const char* mixTarget = nullptr;
+    if (settings.mix.settingKnown && settings.mix.enabled && settings.mix.coreRunning) mixTarget = kMixSourceNode;
     pw_thread_loop_lock(loop_);
-    recordStream_ = connectStream("frame-mic-tuner-record", true);
+    recordStream_ = connectStream("frame-mic-tuner-record", true, mixTarget);
     pw_thread_loop_unlock(loop_);
     if (recordStream_ == nullptr) {
         error_ = VoiceError::Record;
         return false;
     }
     error_ = VoiceError::None;
-    std::fprintf(stderr, "[声] 録音を始めました（既定の入力・最大 %.0f 秒）\n", kVoiceMaxSec);
+    std::fprintf(stderr, "[声] 録音を始めました（%s・最大 %.0f 秒）\n", mixTarget != nullptr ? mixTarget : "既定の入力",
+                 kVoiceMaxSec);
     return true;
 }
 

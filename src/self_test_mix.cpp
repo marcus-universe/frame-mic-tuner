@@ -7,6 +7,7 @@
 
 #include <unistd.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <string>
@@ -31,6 +32,9 @@ void mixSelfTests(const Expect& expect) {
            validateChannelName("  music ", channels, "", normalized) == MixNameError::Duplicate);
     expect("名前: 付け直しでは自分の名前は重複にしない",
            validateChannelName("Music", channels, "ch1", normalized) == MixNameError::Ok && normalized == "Music");
+    expect("アプリ名: 使えない文字は空白になり、32 文字で切れる",
+           channelNameFromApp("  Zen\"Board ") == "Zen Board" && utf8Length(channelNameFromApp(std::string(40, 'a'))) == 32 &&
+               channelNameFromApp(" \t\" ") .empty());
     expect("名前: 引用符・バックスラッシュ・波括弧・改行は使えない",
            validateChannelName("a\"b", {}, "", normalized) == MixNameError::BadChar &&
                validateChannelName("a\\b", {}, "", normalized) == MixNameError::BadChar &&
@@ -50,11 +54,13 @@ void mixSelfTests(const Expect& expect) {
     const std::string dump = R"([
       {"id": 10, "type": "PipeWire:Interface:Node", "info": {"props": {"node.name": "frame_micmix_source", "media.class": "Audio/Source"}}},
       {"id": 11, "type": "PipeWire:Interface:Node", "info": {"props": {"node.name": "frame_micmix_mic_virtual_sink", "media.class": "Audio/Sink"}, "params": {"Props": [{"volume": 0.8}]}}},
-      {"id": 12, "type": "PipeWire:Interface:Node", "info": {"props": {"node.name": "frame_mix_ch1", "media.class": "Audio/Sink"}}},
-      {"id": 13, "type": "PipeWire:Interface:Node", "info": {"props": {"node.name": "frame_mix_ch1_virtual_sink_to_bus"}, "params": {"Props": [{"channelVolumes": [0.5]}]}}},
-      {"id": 14, "type": "PipeWire:Interface:Node", "info": {"props": {"node.name": "frame_mix_ch1_virtual_sink_playback"}, "params": {"Props": [{"volume": 1.2}]}}},
+      {"id": 12, "type": "PipeWire:Interface:Node", "info": {"props": {"node.name": "frame_mix_ch1", "media.class": "Audio/Sink", "object.serial": 4242}}},
+      {"id": 13, "type": "PipeWire:Interface:Node", "info": {"props": {"node.name": "frame_mix_ch1_virtual_sink_to_bus"}, "params": {"Props": [{"channelVolumes": [0.125], "mute": true}]}}},
+      {"id": 14, "type": "PipeWire:Interface:Node", "info": {"props": {"node.name": "frame_mix_ch1_virtual_sink_playback"}, "params": {"Props": [{"volume": 1.0, "mute": false, "channelVolumes": [1.728, 1.728], "softMute": true}]}}},
       {"id": 15, "type": "PipeWire:Interface:Node", "info": {"props": {"node.name": "frame_mix_ch1_from_monitor", "media.class": "Stream/Input/Audio"}}},
       {"id": 20, "type": "PipeWire:Interface:Node", "info": {"props": {"node.name": "app-stream", "media.class": "Stream/Output/Audio", "application.name": "SoundNinja"}}},
+      {"id": 21, "type": "PipeWire:Interface:Node", "info": {"props": {"node.name": "zen-stream", "media.class": "Stream/Output/Audio", "application.name": "Zen"}}},
+      {"id": 22, "type": "PipeWire:Interface:Node", "info": {"props": {"node.name": "pw-loopback", "media.class": "Stream/Output/Audio", "node.virtual": true, "application.name": "loopback"}}},
       {"id": 30, "type": "PipeWire:Interface:Node", "info": {"props": {"node.name": "vrlink-mic", "media.class": "Stream/Input/Audio", "media.name": "Valve VRLink Microphone Input"}}},
       {"id": 40, "type": "PipeWire:Interface:Link", "info": {"output-node-id": 20, "input-node-id": 12}},
       {"id": 41, "type": "PipeWire:Interface:Link", "info": {"output-node-id": 10, "input-node-id": 30}}
@@ -66,9 +72,15 @@ void mixSelfTests(const Expect& expect) {
            graph.known && graph.coreRunning && graph.mic.known && graph.mic.nodeId == 11 && near(graph.mic.linear, 0.8) &&
                graph.vrlinkPresent && graph.routed);
     expect("pw-dump: チャンネルの 2 つの音量と、再生中のアプリ（自分のループバックは数えない）",
-           live != nullptr && live->running && live->apps.size() == 1 && live->apps[0] == "SoundNinja" &&
-               live->toMic.known && near(live->toMic.linear, 0.5) && near(live->toPhones.linear, 1.2) &&
-               graph.channels.size() == 1);
+           live != nullptr && live->running && live->sinkId == 12 && live->sinkSerial == 4242 && live->apps.size() == 1 &&
+               live->apps[0] == "SoundNinja" && live->toMic.known && live->toMic.muted && near(live->toMic.linear, 0.5) &&
+               live->toPhones.muted && near(live->toPhones.linear, 1.2) && graph.channels.size() == 1);
+    const auto hasApp = [&](const std::string& app) {
+        return std::any_of(graph.playbacks.begin(), graph.playbacks.end(),
+                           [&](const MixPlayback& play) { return play.app == app; });
+    };
+    expect("pw-dump: 動いているアプリは Zen と SoundNinja（仮想ループバックは入れない）",
+           hasApp("SoundNinja") && hasApp("Zen") && !hasApp("loopback") && graph.playbacks.size() == 2);
     expect("pw-dump: 壊れた JSON は読めない", !parseMixDump("{", {}).known);
 
     char path[] = "/tmp/frame-mic-tuner-selftest-mix-XXXXXX";
@@ -79,6 +91,7 @@ void mixSelfTests(const Expect& expect) {
     saved.tab = PanelTab::Mix;
     saved.mixEnabled = true;
     saved.mixChannels = {{"ch2", "Sound board"}, {"ch1", "音楽"}};
+    saved.mixPins = {{"Zen", "ch1"}};
     std::string error;
     std::vector<std::string> warnings;
     Config loaded;
@@ -86,7 +99,8 @@ void mixSelfTests(const Expect& expect) {
     expect("設定ファイル: ミックスのオンとチャンネル（空白・日本語）を保存して読み直すと同じ",
            roundTrip && warnings.empty() && loaded.tab == PanelTab::Mix && loaded.mixEnabled &&
                loaded.mixChannels.size() == 2 && loaded.mixChannels[0].id == "ch2" &&
-               loaded.mixChannels[0].name == "Sound board" && loaded.mixChannels[1].name == "音楽");
+               loaded.mixChannels[0].name == "Sound board" && loaded.mixChannels[1].name == "音楽" &&
+               loaded.mixPins.size() == 1 && loaded.mixPins[0].app == "Zen" && loaded.mixPins[0].id == "ch1");
     if (fd >= 0) ::unlink(path);
 
     const std::string bad =
@@ -109,4 +123,13 @@ void mixSelfTests(const Expect& expect) {
         ::unlink(badPath);
     }
     expect("設定ファイル: 範囲外の id・重複・空の名前は読み飛ばす", skipped);
+
+    expect("動いているアプリ: Zen は出し、システムのプロセスは出さない",
+           isListedRunningApp("zen") && isListedRunningApp("Zen") && !isListedRunningApp("pipewire") &&
+               !isListedRunningApp("xdg-desktop-portal") && !isListedRunningApp("pw-loopback") &&
+               !isListedRunningApp("frame-mic-tuner") && !isListedRunningApp("steamwebhelper") &&
+               !isListedRunningApp("WirePlumber"));
+    expect("ピン: アプリ名と実行ファイル名は大文字小文字を無視して一致する",
+           mixAppMatches("Zen", "Zen", "") && mixAppMatches("zen", "ZEN", "") && mixAppMatches("Zen", "Firefox", "zen") &&
+               !mixAppMatches("Zen", "Firefox", "firefox") && !mixAppMatches("", "Zen", "zen"));
 }

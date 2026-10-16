@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <cstdlib>
 #include <cstdio>
 #include <map>
 #include <set>
@@ -22,8 +23,6 @@ constexpr const char* kLoopbackStreamPrefix = "alsa_loopback_stream.alsa_input."
 constexpr const char* kLoopbackDevicePrefix = "alsa_loopback_device.alsa_input.";
 /** 通り道の段の上限（ループしてもここで止める）。 */
 constexpr int kMaxStages = 8;
-/** wpctl で既定のマイクを指す名前（ミュートの読み書き）。 */
-constexpr const char* kDefaultSource = "@DEFAULT_AUDIO_SOURCE@";
 
 /**
  * 文字列が接頭辞で始まるか。
@@ -109,11 +108,11 @@ bool readSetting(const char* key, bool& value, MicError& error) {
  * @param muted 読めたときの書き込み先
  * @return 読めたら true
  */
-bool readMute(bool& muted) {
+bool readDefaultSource(bool& muted, double& linear) {
     const std::vector<std::string> argv = {"wpctl", "get-volume", kDefaultSource};
     const CommandResult result = runCommand(argv);
-    if (result.ok() && parseMute(result.out, muted)) return true;
-    std::fprintf(stderr, "[マイク] ミュートを読めません: %s（出力: %s）\n", describeCommand(argv, result).c_str(),
+    if (result.ok() && parseMute(result.out, muted) && parseSourceVolume(result.out, linear)) return true;
+    std::fprintf(stderr, "[マイク] 音量を読めません: %s（出力: %s）\n", describeCommand(argv, result).c_str(),
                  trim(result.out).c_str());
     return false;
 }
@@ -234,6 +233,18 @@ bool parseMute(const std::string& text, bool& muted) {
     return false;  // 知らない印
 }
 
+bool parseSourceVolume(const std::string& text, double& linear) {
+    const std::string line = trim(text.substr(0, text.find('\n')));
+    const std::string prefix = "Volume: ";
+    if (!startsWith(line, prefix) || line.size() <= prefix.size()) return false;
+    const char* begin = line.c_str() + prefix.size();
+    char* end = nullptr;
+    const double value = std::strtod(begin, &end);
+    if (end == begin || !std::isfinite(value)) return false;
+    linear = value;
+    return true;
+}
+
 Autostart parseAutostart(const std::string& text) {
     const std::string first = trim(text.substr(0, text.find('\n')));
     if (first == "not-found") return Autostart::Missing;
@@ -271,8 +282,11 @@ MicState readMicState(bool withAutostart) {
         if (state.readError == MicError::None) state.readError = MicError::ReadLinks;
     }
 
-    // ミュート（Steam・wpctl・aux ボタンなど、どこから入っても気づけるよう、毎回読む）。読めなくても失敗の表示はしない
-    state.muteKnown = readMute(state.muted);
+    // ミュートと音量（Steam・wpctl・aux ボタンなど、どこから入っても気づけるよう、毎回読む）。読めなくても失敗の表示はしない
+    double source = 1.0;
+    state.muteKnown = readDefaultSource(state.muted, source);
+    state.sourceVolumeKnown = state.muteKnown;
+    if (state.sourceVolumeKnown) state.sourceVolume = source;
 
     state.nsParams = readNsParams();
     // ミックスのノード（失敗してもマイクの設定自体は失敗にしない）
@@ -308,7 +322,9 @@ bool sameMicState(const MicState& a, const MicState& b) {
                         pa.vad == pb.vad && pa.graceKnown == pb.graceKnown && pa.grace == pb.grace;
     return a.loaded == b.loaded && a.echoKnown == b.echoKnown && a.echo == b.echo && a.nsKnown == b.nsKnown &&
            a.ns == b.ns && a.linksKnown == b.linksKnown && a.inUse == b.inUse && a.muteKnown == b.muteKnown &&
-           a.muted == b.muted && a.autostart == b.autostart && sameNs && a.nsApplied == b.nsApplied &&
+           a.muted == b.muted && a.sourceVolumeKnown == b.sourceVolumeKnown &&
+           (!a.sourceVolumeKnown || std::abs(a.sourceVolume - b.sourceVolume) < 0.005) && a.autostart == b.autostart &&
+           sameNs && a.nsApplied == b.nsApplied &&
            a.devices == b.devices && sameMixGraph(a.mix, b.mix) && a.readError == b.readError && a.writeError == b.writeError;
 }
 
@@ -396,6 +412,16 @@ bool writeSetting(const char* key, bool value) {
     return true;
 }
 
+bool writeDefaultSourceVolume(double linear) {
+    linear = std::clamp(linear, 0.0, 1.5);
+    char text[32];
+    std::snprintf(text, sizeof(text), "%.3f", linear);
+    const std::vector<std::string> argv = {"wpctl", "set-volume", kDefaultSource, text};
+    const CommandResult result = runCommand(argv);
+    std::fprintf(stderr, "[マイク] %s\n", describeCommand(argv, result).c_str());
+    return result.ok();
+}
+
 bool writeMute(bool muted) {
     const std::vector<std::string> argv = {"wpctl", "set-mute", kDefaultSource, muted ? "1" : "0"};
     const CommandResult result = runCommand(argv);
@@ -403,7 +429,8 @@ bool writeMute(bool muted) {
     if (!result.ok()) return false;
     // 書いたあとに読み返して、そうなったことを確かめる
     bool now = !muted;
-    if (!readMute(now) || now != muted) {
+    double ignored = 0.0;
+    if (!readDefaultSource(now, ignored) || now != muted) {
         std::fprintf(stderr, "[マイク] %sことを確かめられません\n", muted ? "ミュートした" : "ミュートが外れた");
         return false;
     }

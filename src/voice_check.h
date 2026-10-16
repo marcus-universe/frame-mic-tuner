@@ -77,8 +77,9 @@ public:
     VoiceCheck& operator=(const VoiceCheck&) = delete;
 
     /**
-     * 録音を始める（再生中なら止める）。既定の入力につなぐ。node.virtual は付けない
+     * 録音を始める（再生中なら止める）。node.virtual は付けない
      * （tracker にマイク使用中と数えてもらい、本番と同じフィルターを通った音で録るため）。
+     * ミックスが動いていれば frame_micmix_source（マイクとチャンネル）。無ければ既定の入力。
      * @param settings 録り始めたときの設定と音の出口・マイク（履歴に「AB13X・エコー除去オフ」などと出す）
      * @return 始められたら true
      */
@@ -183,7 +184,7 @@ private:
      * @param capture 録音なら true、再生なら false
      * @return ストリーム。失敗したら nullptr
      */
-    pw_stream* connectStream(const char* name, bool capture);
+    pw_stream* connectStream(const char* name, bool capture, const char* target = nullptr);
 };
 
 /**

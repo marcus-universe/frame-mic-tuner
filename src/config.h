@@ -36,6 +36,7 @@ struct Config {
     bool outputsSaved = false;  ///< ファイルに outputs があった（無ければ前の版からなので、今の設定を今の出口へ移す）
     bool mixEnabled = false;                 ///< PC のストリーミングマイクへミックスを流す（frame-mic.mix）
     std::vector<MixChannel> mixChannels;     ///< 仮想出力。キーは mix_channels
+    std::vector<MixPin> mixPins;             ///< アプリをチャンネルへ固定。キーは mix_pins
 };
 
 /** 画面の文字に使うフォント（Noto Sans CJK。読めなければ fontconfig で探す）。 */

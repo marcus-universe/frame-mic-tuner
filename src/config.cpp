@@ -115,13 +115,13 @@ bool loadConfig(const std::string& path, Config& out, std::vector<std::string>& 
     for (const auto& member : root.members) {
         if (member.first != "language" && member.first != "tab" && member.first != "ns_vad_threshold_percent" &&
             member.first != "ns_vad_grace_ms" && member.first != "update_check" && member.first != "outputs" &&
-            member.first != "mix_enabled" && member.first != "mix_channels") {
+            member.first != "mix_enabled" && member.first != "mix_channels" && member.first != "mix_pins") {
             warnings.push_back("知らないキーです: " + member.first);
         }
     }
     if (const JsonValue* language = root.get("language")) {
         if (!language->isString() || !parseLanguage(language->text, config.language)) {
-            warnings.push_back("language は \"ja\"、\"en\"、\"sc\" のいずれかで書いてください");
+            warnings.push_back("language は \"ja\"、\"en\"、\"sc\"、\"de\"、\"fr\"、\"es\"、\"it\" のいずれかで書いてください");
         }
     }
     if (const JsonValue* tab = root.get("tab")) {
@@ -203,6 +203,39 @@ bool loadConfig(const std::string& path, Config& out, std::vector<std::string>& 
             warnings.push_back("mix_channels は [ ... ] で書いてください");
         }
     }
+    // アプリをチャンネルへ固定する覚え。同じアプリは後の行で上書きする
+    if (const JsonValue* mixPins = root.get("mix_pins")) {
+        if (mixPins->type == JsonValue::Type::Array) {
+            for (const JsonValue& item : mixPins->items) {
+                const JsonValue* app = item.get("app");
+                const JsonValue* id = item.get("id");
+                if (!item.isObject() || app == nullptr || !app->isString() || id == nullptr || !id->isString()) {
+                    warnings.push_back("mix_pins は { \"app\", \"id\" } の配列で書いてください");
+                    continue;
+                }
+                if (app->text.empty() || id->text.size() != 3 || id->text[0] != 'c' || id->text[1] != 'h' || id->text[2] < '1' ||
+                    id->text[2] > '8') {
+                    warnings.push_back("mix_pins を飛ばしました: " + app->text);
+                    continue;
+                }
+                bool channel = false;
+                for (const MixChannel& saved : config.mixChannels) channel = channel || saved.id == id->text;
+                if (!channel) {
+                    warnings.push_back("mix_pins のチャンネルがありません: " + id->text);
+                    continue;
+                }
+                bool used = false;
+                for (MixPin& pin : config.mixPins) {
+                    if (pin.app != app->text) continue;
+                    pin.id = id->text;
+                    used = true;
+                }
+                if (!used) config.mixPins.push_back({app->text, id->text});
+            }
+        } else {
+            warnings.push_back("mix_pins は [ ... ] で書いてください");
+        }
+    }
     out = config;
     return true;
 }
@@ -239,6 +272,13 @@ bool saveConfig(const std::string& path, const Config& config, std::string& erro
             << "}";
     }
     out << (config.mixChannels.empty() ? "]" : "\n  ]");
+    // アプリとチャンネルの対応（再生をそのシンクへ向ける）
+    out << ",\n  \"mix_pins\": [";
+    for (size_t i = 0; i < config.mixPins.size(); ++i) {
+        const MixPin& pin = config.mixPins[i];
+        out << (i == 0 ? "\n" : ",\n") << "    {\"app\": " << jsonString(pin.app) << ", \"id\": " << jsonString(pin.id) << "}";
+    }
+    out << (config.mixPins.empty() ? "]" : "\n  ]");
     if (config.hasNsParams) {
         char numbers[128];
         std::snprintf(numbers, sizeof(numbers), ",\n  \"ns_vad_threshold_percent\": %.0f,\n  \"ns_vad_grace_ms\": %.0f",

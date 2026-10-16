@@ -93,6 +93,14 @@ void MicWorker::refreshDevicesNow() {
     wake_.notify_all();
 }
 
+void MicWorker::refreshMixNow() {
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        refreshNow_ = true;
+    }
+    wake_.notify_all();
+}
+
 uint64_t MicWorker::request(MicCommand command) {
     uint64_t ticket = 0;
     {
@@ -125,6 +133,15 @@ void MicWorker::setDesiredNsParams(double vad, double grace) {
         desiredVad_ = clampNsVad(vad);
         desiredGrace_ = clampNsGrace(grace);
         appliedNodeId_ = -1;  // まだかけていない
+    }
+    wake_.notify_all();
+}
+
+void MicWorker::setMixPins(std::vector<MixPin> pins) {
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        mixPins_ = std::move(pins);
+        refreshNow_ = true;
     }
     wake_.notify_all();
 }
@@ -193,7 +210,12 @@ bool applyMix(const MicCommand& command) {
             const bool core = setMixCoreRunning(false);
             return setting && core;
         }
-        case MicCommand::Kind::SetMixVolume: return writeMixVolume(command.nodeId, command.vad);
+        case MicCommand::Kind::SetMixVolume:
+            // マイクのスライダーは既定のマイク。チャンネルのスライダーはノードの音量。
+            if (command.nodeName == kDefaultSource) return writeDefaultSourceVolume(command.vad);
+            return writeMixVolume(command.nodeId, command.vad);
+        case MicCommand::Kind::SetMixMute:
+            return writeMixMute(command.nodeId, command.value);
         default: return false;
     }
 }
@@ -216,7 +238,8 @@ bool MicWorker::execute(const MicCommand& command, int nodeId) {
         case MicCommand::Kind::AddChannel:
         case MicCommand::Kind::RenameChannel:
         case MicCommand::Kind::RemoveChannel:
-        case MicCommand::Kind::SetMixVolume: return applyMix(command);
+        case MicCommand::Kind::SetMixVolume:
+        case MicCommand::Kind::SetMixMute: return applyMix(command);
         case MicCommand::Kind::ApplySettings: break;  // run() で 3 つの書き込みを別々に扱う
     }
     return false;
@@ -268,6 +291,7 @@ void MicWorker::run() {
     };
 
     Clock::time_point nextRefresh = Clock::now();
+    Clock::time_point nextVrlink = after(5);
     Clock::time_point nextAutostart = Clock::now();
     Clock::time_point nextApplyTry = Clock::now();
     Clock::time_point nextDevices = Clock::now();
@@ -291,6 +315,7 @@ void MicWorker::run() {
                 if (!isNsParams) appliedNodeId_ = -1;
             }
             const MicState before = state_;
+            const std::vector<MixPin> pins = mixPins_;
             lock.unlock();
             if (command.kind == MicCommand::Kind::ApplySettings) {
                 // 出口の設定: エコー除去 → ノイズ除去 → 強さの順に書き、書き終わってから 1 回だけ読み直す
@@ -352,6 +377,12 @@ void MicWorker::run() {
                 fresh = readMicState(true);
                 // 既定を切り替えたときは、一覧も読み直す（メインが新しい出口の設定をかける）
                 fresh.devices = isDefault ? readDevicesWithFallback() : before.devices;
+                applyMixPins(pins, fresh.mix);
+                // ミックスへ入るマイクのループバックは 1 のまま。音量は既定のマイク側で決める。
+                if (fresh.mix.mic.known && fresh.mix.mic.nodeId >= 0 && std::abs(fresh.mix.mic.linear - 1.0) >= 0.02) {
+                    if (writeMixVolume(fresh.mix.mic.nodeId, 1.0)) fresh.mix.mic.linear = 1.0;
+                }
+                maintainVrlinkMakeup(fresh.mix);
             }
             lock.lock();
             if (isNsParams && ok && fresh.nsParams.nodeKnown) appliedNodeId_ = fresh.nsParams.nodeId;
@@ -370,7 +401,8 @@ void MicWorker::run() {
                     case MicCommand::Kind::AddChannel:
                     case MicCommand::Kind::RenameChannel:
                     case MicCommand::Kind::RemoveChannel:
-                    case MicCommand::Kind::SetMixVolume: fresh.writeError = MicError::WriteMix; break;
+                    case MicCommand::Kind::SetMixVolume:
+                    case MicCommand::Kind::SetMixMute: fresh.writeError = MicError::WriteMix; break;
                     default: fresh.writeError = MicError::WriteSettings; break;
                 }
             }
@@ -393,9 +425,15 @@ void MicWorker::run() {
             refreshNow_ = false;
             devicesNow_ = false;
             const AudioDevices previousDevices = state_.devices;
+            const std::vector<MixPin> pins = mixPins_;
             lock.unlock();
             MicState fresh = readMicState(withAutostart);
             fresh.devices = withDevices ? readDevicesWithFallback() : previousDevices;
+            applyMixPins(pins, fresh.mix);
+            if (fresh.mix.mic.known && fresh.mix.mic.nodeId >= 0 && std::abs(fresh.mix.mic.linear - 1.0) >= 0.02) {
+                if (writeMixVolume(fresh.mix.mic.nodeId, 1.0)) fresh.mix.mic.linear = 1.0;
+            }
+            maintainVrlinkMakeup(fresh.mix);
             lock.lock();
             // ノードが作り直されていたら（id が変わった）、保存した値をかけ直す
             applyDesiredIfNeeded(fresh.nsParams, lock);
@@ -473,9 +511,22 @@ void MicWorker::run() {
             nextApplyTry = after(kApplyRetrySec);
             continue;
         }
+        // パネルを閉じている間も、VRLink が作り直されたら無線マイクの音量を足し直す。
+        if (!active_ && now >= nextVrlink) {
+            nextVrlink = after(5);
+            const bool mixOn = state_.mix.enabled || state_.mix.routed;
+            lock.unlock();
+            if (mixOn) {
+                MixGraph graph = readMixGraph({});
+                maintainVrlinkMakeup(graph);
+            }
+            lock.lock();
+            continue;
+        }
         // 次にすることの時刻まで待つ（パネルが見えていない間は、既定を見る 2 秒おきと、強さをかける試しだけ）
         Clock::time_point wakeAt = nextDefaultPoll;
         if (active_) wakeAt = std::min(wakeAt, nextRefresh);
+        if (!active_) wakeAt = std::min(wakeAt, nextVrlink);
         if (applyPending) wakeAt = std::min(wakeAt, nextApplyTry);
         wake_.wait_until(lock, wakeAt);
     }

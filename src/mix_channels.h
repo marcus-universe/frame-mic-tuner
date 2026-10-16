@@ -16,6 +16,8 @@ constexpr double kMixVolumeMax = 1.5;
 constexpr double kMixDefaultMic = 1.0;
 constexpr double kMixDefaultToMic = 0.5;
 constexpr double kMixDefaultPhones = 1.0;
+// 音声チェックはミックスのソースをそのまま再生する。PC への無線マイク（VRLink）はそれより小さいので、そのストリームだけ 2 倍。
+constexpr double kVrlinkMakeupLinear = 2.0;
 
 constexpr const char* kMixCoreService = "frame-mic-mix.service";
 constexpr const char* kMixSettingKey = "frame-mic.mix";
@@ -48,6 +50,7 @@ struct MixNodeVolume {
     bool known = false;
     int nodeId = -1;
     double linear = 1.0;  ///< 0〜1.5
+    bool muted = false;   ///< wpctl set-mute。スライダーの位置はそのまま
     std::string nodeName;
 
     /** @return 画面に出すパーセント（0〜150） */
@@ -58,17 +61,42 @@ struct MixNodeVolume {
 struct MixChannelLive {
     std::string id;
     bool running = false;
+    int sinkId = -1;       ///< チャンネルのシンクのノード id（ピンの判定）
+    int sinkSerial = -1;   ///< その object.serial（target.object に書く数字）
     MixNodeVolume toMic;
     MixNodeVolume toPhones;
     std::vector<std::string> apps;  ///< いまこのチャンネルに出しているアプリ（表示用）
 
     /** @return 同じなら true */
     bool operator==(const MixChannelLive& other) const {
-        return id == other.id && running == other.running && toMic.known == other.toMic.known &&
-               toMic.nodeId == other.toMic.nodeId && apps == other.apps &&
-               (toMic.known == other.toMic.known) && std::abs(toMic.linear - other.toMic.linear) < 0.02 &&
-               toPhones.nodeId == other.toPhones.nodeId && std::abs(toPhones.linear - other.toPhones.linear) < 0.02;
+        return id == other.id && running == other.running && sinkId == other.sinkId && sinkSerial == other.sinkSerial &&
+               toMic.known == other.toMic.known && toMic.nodeId == other.toMic.nodeId && toMic.muted == other.toMic.muted &&
+               apps == other.apps && std::abs(toMic.linear - other.toMic.linear) < 0.02 &&
+               toPhones.known == other.toPhones.known && toPhones.nodeId == other.toPhones.nodeId &&
+               toPhones.muted == other.toPhones.muted && std::abs(toPhones.linear - other.toPhones.linear) < 0.02;
     }
+};
+
+/** いま音を出しているアプリ（自分のループバックと空間オーディオは入れない）。 */
+struct MixPlayback {
+    std::string app;         ///< application.name、無ければ media.name
+    int nodeId = -1;         ///< 再生ストリームのノード id
+    int linkedInput = -1;    ///< つながっている入力ノード（無ければ -1）
+    std::string binary;      ///< application.process.binary のファイル名
+
+    /** @return 同じなら true */
+    bool operator==(const MixPlayback& other) const {
+        return app == other.app && nodeId == other.nodeId && linkedInput == other.linkedInput && binary == other.binary;
+    }
+};
+
+/** アプリをチャンネルへ固定する覚え（config.json の mix_pins）。 */
+struct MixPin {
+    std::string app;  ///< 再生ストリームのアプリ名（比較はそのまま）
+    std::string id;   ///< チャンネル id（ch1〜ch8）
+
+    /** @return 同じなら true */
+    bool operator==(const MixPin& other) const { return app == other.app && id == other.id; }
 };
 
 /** グラフの今（pw-dump と frame-mic.mix の設定）。 */
@@ -79,8 +107,12 @@ struct MixGraph {
     bool coreRunning = false;    ///< frame_micmix_source があるか
     bool vrlinkPresent = false;  ///< VRLink のマイクストリームがあるか
     bool routed = false;         ///< そのストリームが frame_micmix_source から取っているか
+    int vrlinkNodeId = -1;       ///< その取り込みストリーム（音量を足す先）
+    double vrlinkLinear = 1.0;   ///< wpctl と同じ線形の音量
     MixNodeVolume mic;
     std::vector<MixChannelLive> channels;
+    std::vector<MixPlayback> playbacks;  ///< いま音を出しているアプリ
+    std::vector<std::string> runningApps;  ///< 自分のユーザーで動いているアプリ（音を出していなくても）
 };
 
 /**
@@ -89,6 +121,13 @@ struct MixGraph {
  * @return 整えた名前（空なら空）
  */
 std::string normalizeChannelName(const std::string& raw);
+
+/**
+ * アプリ名をチャンネル名にする（使えない文字は空白にし、32 文字で切る）。
+ * @param raw application.name など
+ * @return 整えた名前。空ならチャンネルにはできない
+ */
+std::string channelNameFromApp(const std::string& raw);
 
 /**
  * UTF-8 の文字数（壊れたバイトは 1 文字として数える）。
@@ -189,6 +228,21 @@ bool restartMixChannel(const std::string& id);
 bool writeMixVolume(int nodeId, double linear);
 
 /**
+ * ノードをミュートする・解除する（wpctl set-mute）。音量は変えない。
+ * @param nodeId ノードの id
+ * @param muted ミュートするなら true
+ * @return 書けたら true
+ */
+bool writeMixMute(int nodeId, bool muted);
+
+/**
+ * VRLink の取り込みだけを、音声チェックと同じ大きさに近づける。
+ * ミックスへつながっているときは 2 倍、外れているときは 1 に戻す。スライダーは変えない。
+ * @param graph 読んだグラフ（音量を書いたら vrlinkLinear を合わせる）
+ */
+void maintainVrlinkMakeup(MixGraph& graph);
+
+/**
  * PC へ流す設定（frame-mic.mix）を書いて保存する。
  * @param on 流すなら true
  * @return 書けたら true
@@ -225,3 +279,27 @@ MixGraph readMixGraph(const std::vector<MixChannel>& channels);
  * @return 同じなら true
  */
 bool sameMixGraph(const MixGraph& a, const MixGraph& b);
+
+/**
+ * 覚えたアプリを、そのチャンネルのシンクへ向ける（まだ向いていなければ）。
+ * target.object にはシンクの object.serial を、型なしの数字で書く。
+ * @param pins アプリとチャンネル
+ * @param graph 今のグラフ
+ */
+void applyMixPins(const std::vector<MixPin>& pins, const MixGraph& graph);
+
+/**
+ * プロセス名を「動いているアプリ」に出すか。システムやこのアプリ自身は出さない。
+ * @param name comm か実行ファイルの名前
+ * @return 出してよければ true
+ */
+bool isListedRunningApp(const std::string& name);
+
+/**
+ * 覚えたアプリ名が、再生ストリームかその実行ファイルと一致するか（ASCII の大文字小文字は無視）。
+ * @param pinApp 覚えた名前
+ * @param streamApp application.name
+ * @param binary 実行ファイルの名前
+ * @return 一致すれば true
+ */
+bool mixAppMatches(const std::string& pinApp, const std::string& streamApp, const std::string& binary);

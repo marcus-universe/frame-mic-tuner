@@ -29,6 +29,7 @@ struct MicCommand {
         RenameChannel,     ///< 名前を変えてそのチャンネルだけ再起動（nodeName = id、text = 名前）
         RemoveChannel,     ///< チャンネルを止めて名前ファイルを消す（nodeName = id）
         SetMixVolume,      ///< 音量（nodeId、nodeName、vad = 線形 0〜1.5）
+        SetMixMute,        ///< チャンネルの送りをミュート（nodeId、nodeName、value = ミュートする）
     };
     Kind kind;
     bool value = false;
@@ -106,6 +107,9 @@ public:
     /** 出口とマイクの一覧をすぐ読み直してもらう（選ぶ画面を開いたとき）。 */
     void refreshDevicesNow();
 
+    /** ミックスのグラフと動いているアプリをすぐ読み直してもらう。 */
+    void refreshMixNow();
+
     /**
      * 書き込みを頼む（書いたあと、すぐ読み直す）。ノイズ除去の強さは、まだ実行していない前の値を捨てて最後の値だけにする。
      * @param command 書き込み
@@ -122,6 +126,12 @@ public:
      * @param grace 余韻（ms）
      */
     void setDesiredNsParams(double vad, double grace);
+
+    /**
+     * アプリをチャンネルへ固定する覚えを入れ替える。次の読み直しで、まだ向いていないストリームへ書く。
+     * @param pins アプリとチャンネル
+     */
+    void setMixPins(std::vector<MixPin> pins);
 
     /**
      * 今の状態の写しを取る。
@@ -148,6 +158,7 @@ private:
     double desiredVad_ = kNsVadDefault;
     double desiredGrace_ = kNsGraceDefault;
     int appliedNodeId_ = -1;      ///< かけたい値を最後にかけたノードの id（-1 = まだ）
+    std::vector<MixPin> mixPins_;  ///< アプリをチャンネルへ固定する覚え
     uint64_t requested_ = 0;      ///< 受け付けた書き込みの数
     uint64_t completed_ = 0;      ///< 終わった書き込みの数（捨てた分も含む）
 
