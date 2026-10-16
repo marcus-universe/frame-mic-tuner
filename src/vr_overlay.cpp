@@ -301,7 +301,8 @@ VrEvents VrOverlay::pollEvents() {
                 case vr::VREvent_FocusLeave: result.pointer.push_back({PointerInput::Type::Leave, 0, 0}); break;
                 case vr::VREvent_ScrollSmooth:
                 case vr::VREvent_ScrollDiscrete:
-                    result.pointer.push_back({PointerInput::Type::Scroll, 0, event.data.scroll.ydelta});
+                    result.pointer.push_back(
+                        {PointerInput::Type::Scroll, event.data.scroll.xdelta, event.data.scroll.ydelta});
                     break;
                 // ダッシュボードのアイコンにホバーしたときの「閉じる」（VROverlayFlags_EnableControlBarClose）。
                 // SteamVR 自体の終了（VRSystem 側の VREvent_Quit）とは別のイベント

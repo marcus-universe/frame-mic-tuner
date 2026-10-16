@@ -14,7 +14,7 @@ struct PointerInput {
         Down,
         Up,
         Leave,
-        Scroll,  ///< コントローラーのスティックのスクロール（y に縦の量。正で上）
+        Scroll,  ///< スティックのスクロール（x は左右、y は上下。正で右・上）
     };
     Type type;
     double x = 0.0;

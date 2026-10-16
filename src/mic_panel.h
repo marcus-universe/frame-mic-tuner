@@ -189,11 +189,13 @@ public:
     bool pointerLeave();
 
     /**
-     * コントローラーのスティックのスクロール（VREvent_ScrollSmooth / ScrollDiscrete）。重ねた画面の一覧を動かす。
+     * コントローラーのスティックのスクロール（VREvent_ScrollSmooth / ScrollDiscrete）。
+     * 縦の一覧は上下。ミックスのチャンネル列は左右を優先し、上下も受ける。
      * @param dy 縦の量（正で上）
+     * @param dx 横の量（正で右。ミックスの列では右へ倒すと中身が右へ動く）
      * @return 動いたら true
      */
-    bool scroll(double dy);
+    bool scroll(double dy, double dx = 0);
 
     /**
      * 時間で変わる表示（終了・更新の確認の期限切れ、書いた値の表示の期限）を進める。

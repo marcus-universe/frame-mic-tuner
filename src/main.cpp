@@ -1791,6 +1791,16 @@ int runSelfTest() {
         panel.buttonCenter(PanelAction::MixDelete, afterX, y, "ch1");
         const bool back = panel.scroll(100.0);
         expect("ミックス: チャンネルが多いときは横にスクロールできる", scrolled && back && afterX < beforeX - 40.0);
+        panel.render(config, model);
+        panel.buttonCenter(PanelAction::MixDelete, beforeX, y, "ch1");
+        const bool stickLeft = panel.scroll(0.0, -1.0);
+        panel.render(config, model);
+        panel.buttonCenter(PanelAction::MixDelete, afterX, y, "ch1");
+        const bool stickRight = panel.scroll(0.0, 1.0);
+        panel.render(config, model);
+        double backX = 0.0;
+        panel.buttonCenter(PanelAction::MixDelete, backX, y, "ch1");
+        expect("ミックス: スティックの左で先へ、右で戻る", stickLeft && stickRight && afterX < beforeX - 20.0 && backX > afterX + 20.0);
     }
 
     // 音の出口: 一覧の読み取り（Frame で取った pw-dump・pw-metadata）・キー・出口ごとの設定のかけ方・設定ファイル
@@ -2639,7 +2649,7 @@ int runOverlay(const Options& options) {
                     releasePointer(true);
                     dirty = true;
                     break;
-                case PointerInput::Type::Scroll: dirty |= panel.scroll(input.y); break;
+                case PointerInput::Type::Scroll: dirty |= panel.scroll(input.y, input.x); break;
             }
         }
         if (userQuit) break;

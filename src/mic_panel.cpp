@@ -1478,9 +1478,23 @@ bool MicPanel::pointerLeave() {
     return changed;
 }
 
-bool MicPanel::scroll(double dy) {
-    if (dy == 0.0 || listMaxScroll_ <= 0 || overlay_ == PanelOverlay::AppsConfirm) return false;
-    const double next = std::clamp(listScroll_ - dy * kScrollPxPerUnit, 0.0, listMaxScroll_);
+bool MicPanel::scroll(double dy, double dx) {
+    // フェーダーをドラッグ中にスティックのスクロールが列をずらすと、摘まみが指の下から逃げる。
+    if (listMaxScroll_ <= 0 || overlay_ == PanelOverlay::AppsConfirm || dragAction_ != PanelAction::None || listDragging_) {
+        return false;
+    }
+    // 横の列はドラッグと同じ向き: 右へ倒すと中身が右へ動く。上下も動かす。大きい軸だけ。
+    const bool horizontal = listHorizontal_;
+    const double axis = horizontal && std::fabs(dx) >= std::fabs(dy) ? dx : dy;
+    if (axis == 0.0) return false;
+    double px = kScrollPxPerUnit;
+    if (horizontal) {
+        // はみ出しは数百 px。縦の一覧と同じ 120px だと端まで飛んで、途中で止めにくい。
+        px = std::clamp(listMaxScroll_ * 0.15, 36.0, kScrollPxPerUnit);
+    }
+    double step = axis * px;
+    if (horizontal && std::fabs(axis) < 20.0) step = std::clamp(step, -160.0, 160.0);
+    const double next = std::clamp(listScroll_ - step, 0.0, listMaxScroll_);
     if (next == listScroll_) return false;
     listScroll_ = next;
     return true;
@@ -3163,7 +3177,7 @@ void MicPanel::endList(const frame_ui::Canvas& ui, double contentH, double barX)
     const Rect box = listRect_;
     if (listHorizontal_) {
         // 横スクロール: 端のぼかしと、列の下のバー
-        if (listScroll_ > 0.5) {
+        if (listScroll_ > 8) {
             cairo_pattern_t* fade = cairo_pattern_create_linear(box.x, 0, box.x + 24, 0);
             cairo_pattern_add_color_stop_rgba(fade, 0, kCard.r, kCard.g, kCard.b, 1);
             cairo_pattern_add_color_stop_rgba(fade, 1, kCard.r, kCard.g, kCard.b, 0);
@@ -3172,7 +3186,7 @@ void MicPanel::endList(const frame_ui::Canvas& ui, double contentH, double barX)
             cairo_fill(cr);
             cairo_pattern_destroy(fade);
         }
-        if (listScroll_ < listMaxScroll_ - 0.5) {
+        if (listScroll_ < listMaxScroll_ - 8) {
             cairo_pattern_t* fade = cairo_pattern_create_linear(box.right() - 24, 0, box.right(), 0);
             cairo_pattern_add_color_stop_rgba(fade, 0, kCard.r, kCard.g, kCard.b, 0);
             cairo_pattern_add_color_stop_rgba(fade, 1, kCard.r, kCard.g, kCard.b, 1);
@@ -3181,10 +3195,10 @@ void MicPanel::endList(const frame_ui::Canvas& ui, double contentH, double barX)
             cairo_fill(cr);
             cairo_pattern_destroy(fade);
         }
-        fillRounded(cr, {box.x, box.bottom() + 6, box.w, 6}, 3, kIconBox);
+        fillRounded(cr, {box.x, box.bottom() + 6, box.w, 8}, 4, kIconBox);
         const double thumbW = std::max(40.0, box.w * box.w / contentH);
         const double thumbX = box.x + (box.w - thumbW) * (listScroll_ / listMaxScroll_);
-        fillRounded(cr, {thumbX, box.bottom() + 6, thumbW, 6}, 3, kBorder);
+        fillRounded(cr, {thumbX, box.bottom() + 6, thumbW, 8}, 4, kAccent);
         return;
     }
     // 下に続きがあるときは、下の端をカードの色へぼかす
@@ -3201,7 +3215,7 @@ void MicPanel::endList(const frame_ui::Canvas& ui, double contentH, double barX)
     fillRounded(cr, {barX, box.y, 6, box.h}, 3, kIconBox);
     const double thumbH = std::max(40.0, box.h * box.h / contentH);
     const double thumbY = box.y + (box.h - thumbH) * (listScroll_ / listMaxScroll_);
-    fillRounded(cr, {barX, thumbY, 6, thumbH}, 3, kBorder);
+    fillRounded(cr, {barX, thumbY, 6, thumbH}, 3, kAccent);
 }
 
 void MicPanel::drawOutputPicker(const frame_ui::Canvas& ui, const UiText& t, const Config& config, const PanelModel& model) {
