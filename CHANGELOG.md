@@ -1,9 +1,11 @@
 # Changelog
 
-## 0.4.0 (2026-10-14)
+## 0.4.0 (2026-10-17)
 
-- **Mix** tab: named virtual outputs (up to 8, for example "Frame Mix: Music") that an app can select as its playback device. Each channel has **Into mic** and **Headphones** sliders (0–150%). The filtered built-in mic (after EQ, echo cancellation and noise suppression) has its own slider. Everything sums to a source named **Frame Mic + Mix**. While **On**, the VRLink mic stream to the PC is aimed at that source, so the PC's "Steam Streaming Microphone" hears the mic and the channels. **Off** leaves the channel outputs running for the headphones and sends the PC the normal mic. Adding, renaming or removing one channel does not interrupt the others.
-- Channel names come from a suggestion list in the panel language (Music, Soundboard, Browser, Game, Video, Voice chat, System sounds, and the Japanese and Simplified Chinese equivalents) or from the SteamVR keyboard. Names are trimmed, compared without regard to ASCII case, and must be unique and at most 32 characters. The row shows which apps are playing into that channel. **Delete** asks for a second press.
+- 🎚️ **Mix tab.** A new tab at the end of the mic signal chain. Add a channel as a virtual output, or pick a running app and the channel is named after it. Each channel has its own level into the mic and into your headphones or speakers.
+- 🎙️ **PC streaming mic.** Turn Mix on to send those channels, together with the headset mic, to the PC streaming mic. Useful for music or soundboards in a voice call.
+- 👂 **Voice Check.** While Mix is on, Voice Check records the mix as well as the mic, so you can hear what the PC will get.
+- 🌐 **Languages.** Japanese, English, Simplified Chinese, German, French, Spanish, and Italian. Pick the language from a dropdown instead of a toggle.
 - The in-panel **Update** button still installs releases from `sasaken1102r/frame-mic-tuner`. Updating that way replaces this build and removes the Mix tab.
 
 ## 0.3.0 (2026-10-10)

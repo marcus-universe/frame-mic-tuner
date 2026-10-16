@@ -78,7 +78,7 @@ cd frame-mic-tuner
 
 Then **restart the headset** once, so WirePlumber loads the switch script. Don't restart PipeWire or WirePlumber by hand while playing: SteamVR and Steam Link lose their sound. If that happens anyway, restart SteamVR on the headset (or reconnect Steam Link) and the sound comes back.
 
-No sudo is needed. `install.sh` puts everything into your home directory (`~/.local/bin`, `~/.local/share`, `~/.config`), so SteamOS updates don't remove it. To update by hand: download the new release and run its `install.sh` again (or, in a source checkout, `git pull && ./install.sh`) — or just press **Update** in the panel's **Apps & updates** once it shows a newer version is available. On this fork, **Update** still downloads `sasaken1102r/frame-mic-tuner` and would replace the Mix build. Install this version again from the `feature/mic-mix` branch instead of pressing **Update**. Version 0.1.0 has no update button, so going from 0.1.0 to 0.2.0 has to be done by hand this once.
+No sudo is needed. `install.sh` puts everything into your home directory (`~/.local/bin`, `~/.local/share`, `~/.config`), so SteamOS updates don't remove it. To update by hand: download the new release and run its `install.sh` again (or, in a source checkout, `git pull && ./install.sh`) — or just press **Update** in the panel's **Apps & updates** once it shows a newer version is available. Version 0.1.0 has no update button, so going from 0.1.0 to 0.2.0 has to be done by hand this once.
 
 What gets installed:
 
