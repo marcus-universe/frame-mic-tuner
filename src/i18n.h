@@ -164,7 +164,7 @@ struct UiText {
     const char* appsRelatedTitle;       ///< いっしょに使うアプリ
     const char* appsRelatedHint;        ///< このアプリの機能で使うものだけを出しています
     const char* appsReasonAux;          ///< frame-aux-shortcuts を使う理由
-    const char* appsAllTitle;           ///< ささけんの Frame アプリ
+    const char* appsAllTitle;           ///< ささけん＠の Frame アプリ
     const char* appsAllCountFormat;     ///< %1$d 個のうち %2$d 個が入っていません
     const char* appsAllInstalledFormat; ///< %d 個すべて入っています
     const char* appsInstall;            ///< 入れる

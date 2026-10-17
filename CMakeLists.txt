@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(frame-mic-tuner VERSION 0.3.0 LANGUAGES CXX)
+project(frame-mic-tuner VERSION 0.3.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -38,7 +38,7 @@ add_executable(frame-mic-tuner
   vendor/frame-updater/cpp/update_check.cpp
   # 共通の UI 部品（色・寸法・切り替え・ボタン・カード・一番下の行）
   vendor/frame-ui/cpp/frame_ui.cpp
-  # ささけんのほかの Frame アプリの一覧と、インストーラーを Konsole で開く部品
+  # ささけん＠のほかの Frame アプリの一覧と、インストーラーを Konsole で開く部品
   vendor/frame-apps/cpp/frame_apps.cpp
   vendor/frame-apps/cpp/frame_apps_data.cpp
   vendor/frame-apps/cpp/frame_apps_catalog.cpp
@@ -48,6 +48,18 @@ add_executable(frame-mic-tuner
 target_include_directories(frame-mic-tuner PRIVATE third_party/openvr vendor/frame-updater/cpp vendor/frame-ui/cpp
                            vendor/frame-apps/cpp)
 target_compile_options(frame-mic-tuner PRIVATE -Wall -Wextra)
+# Keep Release's normal speed optimization while dropping unused code/data and
+# allowing cross-file optimization. Do not change audio floating-point semantics.
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(frame-mic-tuner PRIVATE
+    $<$<CONFIG:Release>:-ffunction-sections;-fdata-sections>)
+  target_link_options(frame-mic-tuner PRIVATE $<$<CONFIG:Release>:-Wl,--gc-sections>)
+endif()
+include(CheckIPOSupported)
+check_ipo_supported(RESULT FRAME_MIC_IPO_SUPPORTED OUTPUT FRAME_MIC_IPO_ERROR)
+if(FRAME_MIC_IPO_SUPPORTED)
+  set_property(TARGET frame-mic-tuner PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+endif()
 # --version で出す版（CHANGELOG.md と合わせる）
 target_compile_definitions(frame-mic-tuner PRIVATE FRAME_MIC_TUNER_VERSION="${PROJECT_VERSION}")
 target_link_libraries(frame-mic-tuner PRIVATE
@@ -65,3 +77,16 @@ set_target_properties(frame-mic-tuner PROPERTIES
 )
 
 install(TARGETS frame-mic-tuner RUNTIME DESTINATION bin)
+
+include(CTest)
+if(BUILD_TESTING)
+  add_test(NAME self-test COMMAND frame-mic-tuner --self-test)
+  add_executable(rgba-test tests/rgba_test.cpp src/draw.cpp)
+  target_include_directories(rgba-test PRIVATE src)
+  target_link_libraries(rgba-test PRIVATE PkgConfig::CAIRO PkgConfig::FREETYPE)
+  target_compile_options(rgba-test PRIVATE -Wall -Wextra)
+  if(FRAME_MIC_IPO_SUPPORTED)
+    set_property(TARGET rgba-test PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+  endif()
+  add_test(NAME rgba COMMAND rgba-test)
+endif()

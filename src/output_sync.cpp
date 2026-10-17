@@ -86,11 +86,14 @@ OutputSync::OutputSync(Request request) : request_(std::move(request)) {}
 
 void OutputSync::noteWrite(uint64_t ticket) {
     if (ticket > waitTicket_) waitTicket_ = ticket;
+    panelWrite_ = true;
 }
 
 void OutputSync::apply(const OutputProfile& profile, bool onlyIfChanged) {
-    noteWrite(request_(MicCommand::applySettings(profile.echo, profile.ns, true, profile.nsVad, profile.nsGrace,
-                                                 onlyIfChanged)));
+    const uint64_t ticket = request_(MicCommand::applySettings(profile.echo, profile.ns, true, profile.nsVad,
+                                                               profile.nsGrace, onlyIfChanged));
+    if (ticket > waitTicket_) waitTicket_ = ticket;
+    panelWrite_ = false;
 }
 
 bool OutputSync::update(const MicState& state, Config& config, const std::string& today) {
@@ -167,7 +170,8 @@ bool OutputSync::update(const MicState& state, Config& config, const std::string
         return changed;
     }
 
-    // 同じ出口: 外から変わった値（ほかのツール・aux ボタン・wpctl settings）を覚える
+    // 同じ出口: 外から変わった値（ほかのツール・aux ボタン・wpctl settings）と、パネルのバーを動かしている途中の値
+    // （離すまで保存しない）を覚える
     OutputProfile& profile = ensureProfile(config, key, state.devices, changed);
     if (liveKnown && settled) {
         OutputProfile live = liveProfile(state, profile);
@@ -175,9 +179,12 @@ bool OutputSync::update(const MicState& state, Config& config, const std::string
             live.nsVad = profile.nsVad;
             live.nsGrace = profile.nsGrace;
         }
+        const bool fromPanel = panelWrite_;
+        panelWrite_ = false;
         if (!live.sameSettings(profile)) {
-            std::fprintf(stderr, "[出口] 今の出口 %s の設定が外から変わったので覚えます: %s\n", key.c_str(),
-                         describe(live).c_str());
+            std::fprintf(stderr, "[出口] 今の出口 %s の設定%sので覚えます: %s\n", key.c_str(),
+                         fromPanel ? "をパネルで変えた" : "が外から変わった", describe(live).c_str());
+            lastAdoptedFromPanel_ = fromPanel;
             if (live.echo != profile.echo || live.ns != profile.ns) notice_.shown = false;  // 元に戻すの値はもう古い
             profile = live;
             changed = true;

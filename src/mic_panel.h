@@ -61,7 +61,7 @@ enum class PanelAction {
     UpdateDismiss,    ///< 「閉じる」
     UpdateCheckOn,    ///< 「新しい版の確認」オン
     UpdateCheckOff,   ///< 「新しい版の確認」オフ
-    AppsOpenList,     ///< 「ささけんの Frame アプリ」の行（一覧を重ねる）
+    AppsOpenList,     ///< 「ささけん＠の Frame アプリ」の行（一覧を重ねる）
     AppInstall,       ///< 「入れる」（key = インストーラーでの呼び名。パネルの中で確認の画面を出す）
     AppsOpenMenu,     ///< 「インストーラーを開く」（パネルの中で確認の画面を出す）
     AppsConfirmCancel,///< 確認の「やめる」（パネルの中で戻る）
@@ -99,7 +99,7 @@ enum class PanelOverlay {
     None,
     OutputPicker,  ///< 音の出口を選ぶ
     MicPicker,     ///< 使うマイク
-    AppsList,      ///< ささけんの Frame アプリ（アプリと更新の画面から）
+    AppsList,      ///< ささけん＠の Frame アプリ（アプリと更新の画面から）
     AppsConfirm,   ///< 入れる前の確認（実行するコマンドを見せる）
 };
 
@@ -111,7 +111,7 @@ struct PanelModel {
     std::string activeOutputKey;             ///< 今の出口（設定をかけている出口。空なら一覧の既定）
     bool switchNotice = false;               ///< 自動で切り替えた知らせを出すか
     std::string switchKey;                   ///< その出口
-    std::vector<frame_apps::Entry> apps;     ///< ささけんのほかのアプリ（使うものが先、自分は入っていない）
+    std::vector<frame_apps::Entry> apps;     ///< ささけん＠のほかのアプリ（使うものが先、自分は入っていない）
     bool menuBusy = false;                   ///< インストーラーのメニューの Konsole がまだ開いている
 };
 

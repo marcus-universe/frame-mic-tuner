@@ -52,7 +52,7 @@ wpctl settings frame-mic.echo-cancel                     # 今の値（Value: tr
 
 SteamVR のダッシュボードの下の並びに「Mic」のアイコン（マイクの絵）が出る。選ぶとパネル（1200×788、幅 2.8m）が開き、レーザーポインターで押して操作する。
 
-2026-10-10 に、ユーザーが決めた見本（claude.ai の Artifact「マイク（試作）」。1200×788 の絶対座標の HTML）に合わせて作り直した。部品（切り替え・ボタン・カード・一番下の行）は共通の UI 部品 frame-ui（`vendor/frame-ui/`）で描き、色も frame-ui と同じ（下の「色とアクセシビリティ」）。画面は 2 つ（**マイクの設定** と **アプリと更新**）で、その上に重ねて出す画面が 4 つある（音の出口を選ぶ・使うマイク・ささけんの Frame アプリ・入れる前の確認）。
+2026-10-10 に、ユーザーが決めた見本（claude.ai の Artifact「マイク（試作）」。1200×788 の絶対座標の HTML）に合わせて作り直した。部品（切り替え・ボタン・カード・一番下の行）は共通の UI 部品 frame-ui（`vendor/frame-ui/`）で描き、色も frame-ui と同じ（下の「色とアクセシビリティ」）。画面は 2 つ（**マイクの設定** と **アプリと更新**）で、その上に重ねて出す画面が 4 つある（音の出口を選ぶ・使うマイク・ささけん＠の Frame アプリ・入れる前の確認）。
 
 | 場所 | ボタン | 動き |
 |---|---|---|
@@ -78,7 +78,7 @@ SteamVR のダッシュボードの下の並びに「Mic」のアイコン（マ
 |---|---|---|
 | 音の出口を選ぶ（56, 56, 1088×676） | 行・**ここから音を出す**・**忘れる** | 「つながっている出口」（Frame のスピーカーが先頭）と「前に使った出口（いまはつながっていない）」（最後に使った日の新しい順）。各行に絵・名前・状態（いま使用中（緑の ●）/ つながっています / 最後に使ったのは M/D）・覚えている設定のまとめ。行を押すとその出口の設定を表示して閉じる（「設定を表示中」の札。今の出口でない出口は、変えても覚えるだけ）。右は、つながっている出口なら **ここから音を出す**（既定にする。一覧は開いたまま）、今の出口なら「いま使用中」の札、前に使った出口なら **忘れる**（覚えた設定を消す。今の出口・つながっている出口は消せない）。一覧は 76px の行を 8px おきに並べ、入りきらなければスクロール（下の「一覧のスクロール」）。下に説明 2 行 |
 | 使うマイク（160, 140, 880×440） | **このマイクを使う** | つながっているマイク（内蔵が先頭）。内蔵は「エコー除去・ノイズ除去がかかります」、外付けは「処理はかかりません（そのままアプリへ）」。使うマイクを既定にして閉じる |
-| ささけんの Frame アプリ（アプリと更新から） | **入れる**・**インストーラーを開く** | frame-apps の一覧（下の「ほかのアプリ」） |
+| ささけん＠の Frame アプリ（アプリと更新から） | **入れる**・**インストーラーを開く** | frame-apps の一覧（下の「ほかのアプリ」） |
 | 入れる前の確認 | **やめる**・**Konsole で開く** | 実行するコマンドを等幅の箱で見せる。一覧から開いたときは、やめると一覧に戻る |
 
 アプリと更新の画面:
@@ -87,7 +87,7 @@ SteamVR のダッシュボードの下の並びに「Mic」のアイコン（マ
 |---|---|---|
 | このアプリ（左のカード） | 今すぐ確かめる / 更新する（確認: やめる・更新する）/ もう一度・閉じる / 閉じる | アイコン（サムネイルと同じ絵）・名前・版・説明。その下の暗い箱に `vendor/frame-updater` の `UpdateChecker` の状態（前の全幅の更新の帯をここへ移した）。文言は frame-ui の表（strings.md のとおり）。ただし確認・更新中の補足と入れ終わりの文と補足は、install.sh が常駐を再起動しないこのアプリに合わせたこのアプリの表のもの（「終わったら、終了して起動し直すと新しい版になります」「WirePlumber のスクリプトも変わったときは、ヘッドセットも再起動してね」）。新しい版あり・確認・入れ終わりはピンクの枠、更新の失敗は赤い枠、確認の失敗は文字だけ赤。箱の幅に合わせて、新しい版があるときのボタンは「更新する」だけ（frame-ui の帯は「今すぐ確かめる」も並べる）。「更新する」の 1 回目は確認の表示にするだけで、3 秒以内に確認の「更新する」で `install()`。最新・版だけのときは 2 行目に「起動したときと 1 日 1 回、GitHub で新しい版を確かめます」（オフなら「自動では確かめません…」） |
 | 新しい版の確認 | オン / オフ | `config.json` の `update_check`。オフにすると、自動の確認もアプリの一覧の取得も止まる（「今すぐ確かめる」は押せる） |
-| いっしょに使うアプリ（右のカード） | **入れる**・「ささけんの Frame アプリ … ›」 | 下の「ほかのアプリ」 |
+| いっしょに使うアプリ（右のカード） | **入れる**・「ささけん＠の Frame アプリ … ›」 | 下の「ほかのアプリ」 |
 
 画面の並び（見本の座標のとおり。px はパネルの画像の px）:
 
@@ -165,17 +165,17 @@ Frame（2026-10-10、AB13X USB Audio の USB-C 変換をつないだ状態）の
 
 ## 一覧のスクロール
 
-- 音の出口を選ぶ・使うマイク・ささけんの Frame アプリの一覧は、入りきらないとスクロールする。見えている枠で切り抜き、右に幅 6 の細いスクロールバー（溝 #262a33・つまみは枠の色）、下に続きがあるときは下の端 28px をカードの色へぼかす
+- 音の出口を選ぶ・使うマイク・ささけん＠の Frame アプリの一覧は、入りきらないとスクロールする。見えている枠で切り抜き、右に幅 6 の細いスクロールバー（溝 #262a33・つまみは枠の色）、下に続きがあるときは下の端 28px をカードの色へぼかす
 - スティック: ダッシュボードのオーバーレイに `VROverlayFlags_SendVRSmoothScrollEvents` を付け、`VREvent_ScrollSmooth`（と `ScrollDiscrete`）の `ydelta` 1 あたり 120px 動かす（上へ倒すと上へ）
 - ドラッグ: 一覧の中を押したまま 8px 以上動かすとスクロール（指についていく）。一覧の中の行とボタンは、押したときではなく**離したときに**、ドラッグしていなければ押したことにする（行を押してそのまま送れるように）
 
 ## ほかのアプリ（frame-apps）
 
-ささけんのほかの Steam Frame アプリの一覧と、インストーラーを Konsole で開く共通の部品（`vendor/frame-apps/`。frame-apps の README の「アプリへの入れ方」のとおり）。
+ささけん＠のほかの Steam Frame アプリの一覧と、インストーラーを Konsole で開く共通の部品（`vendor/frame-apps/`。frame-apps の README の「アプリへの入れ方」のとおり）。
 
 - `AppsManager`: 自分 = `frame-mic-tuner`（一覧に出さない）、いっしょに使うアプリ = `frame-aux-shortcuts`（理由「aux ボタンで、マイクのミュートを切り替える」。中国語の理由はこのアプリの表から）
 - 一覧を取りに行くのは「新しい版の確認」がオンのときだけ（`setFetchEnabled(config.update_check)` を毎回）。起動時と一覧を開いたときに `fetchIfDue()`（1 時間に 1 回まで、ほかのアプリと共有）。メインループで毎回 `tick()`。アプリと更新の画面を見ている間は `refreshIfStale(5)`
-- 画面: アプリと更新の右のカードに、いっしょに使うアプリ（アイコン・名前・理由・**入れる** か状態の札）と「ささけんの Frame アプリ N 個のうち M 個が入っていません ›」（押すと一覧）と、Konsole・sudo なしの説明。一覧（アイコン・名前・このアプリで使うものには札・説明（簡体字中国語は英語の説明）・**入れる** / 動作中 / 入っています / Konsole で実行中…）と **インストーラーを開く**
+- 画面: アプリと更新の右のカードに、いっしょに使うアプリ（アイコン・名前・理由・**入れる** か状態の札）と「ささけん＠の Frame アプリ N 個のうち M 個が入っていません ›」（押すと一覧）と、Konsole・sudo なしの説明。一覧（アイコン・名前・このアプリで使うものには札・説明（簡体字中国語は英語の説明）・**入れる** / 動作中 / 入っています / Konsole で実行中…）と **インストーラーを開く**
 - **入れる** と **インストーラーを開く** は、まず確認の画面で `installerCommand(key)` をそのまま見せ、**Konsole で開く** で `openInstaller(key, lang)`（簡体字中国語のときの Konsole の最後の 1 行は英語）。開けないときは理由（DISPLAY が無い・Konsole が無い・まだ開いている）を赤で出す。アプリ名とコマンドは、今の一覧から呼び名で引く
 - 文言は frame-apps の strings.md のとおり（日英）。簡体字中国語はこのアプリの表で訳した
 
@@ -288,13 +288,15 @@ ssh steamos@<headset-ip> 'cd ~/frame-mic-tuner && cmake -G Ninja -S . -B build &
 ./build/frame-mic-tuner --test-record 3          # 3 秒録音 → 長さとピーク → メモリから再生
 ./build/frame-mic-tuner --contrast-report        # 色の組み合わせごとのコントラスト比と合否
 ./build/frame-mic-tuner --self-test              # 判定の関数（自己修復のオーバーレイの判定・出力の読み取り・タブの保存・ドラッグの終わらせ方・音の出口・パネルの当たり判定）を決まった入力で試す
+ctest --test-dir build --output-on-failure       # --self-test と rgba-test（画素の変換を全部の組み合わせ・端・行の余白つきで試す）
+./build/rgba-test --benchmark                    # 画素の変換の時間を、前のやり方（表を毎画素引く）と比べる
 ./build/frame-mic-tuner --probe                  # 常駐しているパネルを SteamVR 経由で探して状態を出す
 ./build/frame-mic-tuner --version
 ```
 
 - `--print` は `pw-link -l` のうちマイクの通り道の行も出す（表示とリンクが合っているかを見比べる用）。音の出口とマイクは、キー・既定にするノード（id）・今の既定（`*`）と、設定ファイルの出口ごとの設定を出す（読むだけ。移し替えもかけることもしない）
 - `--dump-png` は今の実際の値で描く（設定ファイルは読むだけ）。`--fake` か `--fake-*` を付けると実際の値を読まずにダミーで描く（`--fake-echo on|off`・`--fake-ns on|off`・`--fake-idle`・`--fake-loading`・`--fake-autostart on|off|missing|unknown`・`--fake-error read|not-installed|links|write|write-echo|write-ns|write-mute|write-mute-on|write-output|write-input|autostart`）。`--preview-quit` で「もう一度押すと終了」の状態、`--language ja|en|sc` で言語、`--tab quick|fine` でタブを指定
-- 画面と重ねた画面: `--view settings|apps`・`--overlay output|mic|apps|confirm|list-confirm`（音の出口を選ぶ・使うマイク・ささけんの Frame アプリ・入れる前の確認・一覧から開いた確認）・`--preview-scroll PX|end`（重ねた画面の一覧のスクロール）
+- 画面と重ねた画面: `--view settings|apps`・`--overlay output|mic|apps|confirm|list-confirm`（音の出口を選ぶ・使うマイク・ささけん＠の Frame アプリ・入れる前の確認・一覧から開いた確認）・`--preview-scroll PX|end`（重ねた画面の一覧のスクロール）
 - 音の出口のダミー（`--fake` のとき。つながっている出口は Frame のスピーカー・AB13X USB Audio・WH-1000XM4、マイクは内蔵・AB13X）: `--fake-output speaker|earphones`（今の出口。earphones = AB13X。`--fake-echo` を付けなければ、その出口のプリセットに合わせる）・`--fake-past-outputs N`（前に使った出口の数。既定 3 で、一覧がスクロールする）・`--fake-switched`（自動で切り替えた知らせ）・`--fake-external-mic`（外付けのマイクを使っている）・`--fake-viewing ab13x|past`（今の出口でない出口の設定を表示）
 - ほかのアプリのダミー（同梱の一覧。eye と perf は動作中、keyboard は入っている）: `--fake-aux missing|installed|running`・`--fake-apps-busy KEYS`（Konsole を開いている呼び名。menu はメニュー）・`--fake-apps-extra N`（一覧にダミーのアプリを足す）・`--fake-confirm KEY|menu`・`--fake-launch busy|nodisplay|nokonsole|failed`（Konsole を開けなかった表示）
 - 声のチェックの見た目: `--fake-recording`（録音中）・`--fake-history N`（ダミーの履歴 N 件）・`--fake-playing I`（I 件目を再生中）・`--fake-voice-error record|play`・`--preview-pressed earphone|speaker|record|mute|apps`（押している間。1 回描いてボタンの位置を知り、そこにポインターを置いて描き直す）
@@ -446,8 +448,9 @@ systemd から起動されたのに、すでに常駐がいるとき（手で起
 | `src/vr_overlay.*` | OpenVR の接続、ダッシュボードのオーバーレイ、イベント、終了処理、`--probe` |
 | `src/vk_texture.*`・`src/draw.*`・`src/json.*` | Vulkan の画像、描画の部品、JSON（同じ作者の別のオーバーレイと共通） |
 | `src/i18n.*`・`src/config.*` | 文言の表（日本語・英語・簡体字中国語）、設定ファイル（言語・タブ・新しい版の確認・出口ごとの設定） |
+| `tests/rgba_test.cpp` | `ctest` の画素の変換のテストと `--benchmark`（リリースの tar.gz には入れない） |
 | `vendor/frame-updater/` | 新しい版の確認と更新（共通のリポジトリからのコピー。直さない） |
 | `vendor/frame-ui/` | 共通の UI 部品（色・寸法・切り替え・ボタン・カード・一番下の行・frame-ui の文言の表）。`sh ../frame-ui/sync.sh .` で写す。直さない |
-| `vendor/frame-apps/` | ささけんのほかの Frame アプリの一覧と、インストーラーを Konsole で開く部品（アイコンを含む）。`sh ../frame-apps/sync.sh .` で写す。直さない |
+| `vendor/frame-apps/` | ささけん＠のほかの Frame アプリの一覧と、インストーラーを Konsole で開く部品（アイコンを含む）。`sh ../frame-apps/sync.sh .` で写す。直さない |
 | `contrib/` | `.desktop`・`.service`・アイコン・設定の例・`wireplumber/`（切り替えの仕組み） |
 | `install.sh` | ビルドとインストール・アンインストール |

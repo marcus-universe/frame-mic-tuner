@@ -19,8 +19,8 @@ body:
     id: version
     attributes:
       label: Version / 版
-      description: Shown on the panel's update card, or run `~/.local/bin/frame-mic-tuner --version` on the Frame. / パネルの更新の帯、または Frame で `~/.local/bin/frame-mic-tuner --version`
-      placeholder: "0.3.0"
+      description: Shown in the panel's Apps & updates (top right), or run `~/.local/bin/frame-mic-tuner --version` on the Frame. / パネル右上の「アプリと更新」、または Frame で `~/.local/bin/frame-mic-tuner --version`
+      placeholder: "0.3.1"
     validations:
       required: true
   - type: input

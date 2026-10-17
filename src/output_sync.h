@@ -40,7 +40,8 @@ public:
     bool update(const MicState& state, Config& config, const std::string& today);
 
     /**
-     * パネルから今の出口の設定を書き込んだ（その書き込みが終わるまで、外からの変化として取り込まない）。
+     * パネルから今の出口の設定を書き込んだ（その書き込みが終わるまで、外からの変化として取り込まない。
+     * 終わったあとに読んだ値が覚えた設定と違えば、外からではなくパネルで変えた値として覚える）。
      * @param ticket ワーカーの受付番号
      */
     void noteWrite(uint64_t ticket);
@@ -61,11 +62,16 @@ public:
     /** @return 今の出口のキー（まだ決まっていなければ空） */
     const std::string& activeKey() const { return activeKey_; }
 
+    /** @return 最後に今の出口の設定として覚えた値が、パネルで変えたものだったか（--self-test 用） */
+    bool lastAdoptedFromPanel() const { return lastAdoptedFromPanel_; }
+
 private:
     Request request_;
     std::string activeKey_;    ///< 今の出口（設定をかけた出口）
     bool started_ = false;     ///< 起動したときの設定をかけた
     uint64_t waitTicket_ = 0;  ///< この受付番号の書き込みが終わるまで、外からの変化を取り込まない
+    bool panelWrite_ = false;  ///< 最後に待った書き込みがパネルからのもの（終わって読み直したら下ろす）
+    bool lastAdoptedFromPanel_ = false;
     Notice notice_;
     std::string skippedKey_;   ///< 機器の出口ではないので見送った既定の出力（同じログを連打しない）
 

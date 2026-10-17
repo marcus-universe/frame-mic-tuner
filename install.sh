@@ -106,7 +106,7 @@ cd "$here"
 if [[ $from_source -eq 1 ]]; then
     # Build (or bring an existing build up to date after a git pull)
     if [[ ! -f build/build.ninja ]]; then
-        cmake -G Ninja -S . -B build
+        cmake -G Ninja -S . -B build -DBUILD_TESTING=OFF
     fi
     ninja -C build
     built_bin="build/frame-mic-tuner"

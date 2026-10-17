@@ -2047,7 +2047,7 @@ void MicPanel::drawRelatedApps(const frame_ui::Canvas& ui, const UiText& t, cons
         y += 96 + 16;
     }
 
-    // 「ささけんの Frame アプリ　N 個のうち M 個が入っていません ›」（押すと一覧）
+    // 「ささけん＠の Frame アプリ　N 個のうち M 個が入っていません ›」（押すと一覧）
     const Rect open {x, y, w, 88};
     const int l = look(open);
     fillRounded(cr, open, 16, l == 2 ? kControlDown : (l == 1 ? kControlHover : kControl));

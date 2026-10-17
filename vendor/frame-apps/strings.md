@@ -11,7 +11,7 @@
 |---|---|---|---|
 | `appsRelatedTitle` | このアプリで使うアプリの見出し | いっしょに使うアプリ | Companion apps |
 | `appsRelatedHint` | その下の補足 | このアプリの機能で使うものだけを出しています | Only the apps this app uses |
-| `appsAllTitle` | 一覧を開く行・一覧の見出し | ささけんの Frame アプリ | Frame apps by sasaken@ |
+| `appsAllTitle` | 一覧を開く行・一覧の見出し | ささけん＠の Frame アプリ | Frame apps by sasaken@ |
 | `appsAllCountFormat` | 一覧を開く行の補足（`%1$d` = 一覧の数、`%2$d` = 入っていない数） | %1$d 個のうち %2$d 個が入っていません | %2$d of %1$d not installed |
 | `appsAllInstalledFormat` | 同・全部入っているとき（`%d` = 一覧の数） | %d 個すべて入っています | All %d are installed |
 | `appsInstall` | 入っていないアプリのボタン | 入れる | Install |

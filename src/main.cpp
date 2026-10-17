@@ -219,7 +219,7 @@ void printUsage() {
         "      --fake-viewing ab13x|past  今の出口ではなく、その出口の設定を表示する\n"
         "      --view settings|apps  画面（マイクの設定 / アプリと更新）\n"
         "      --overlay output|mic|apps|confirm|list-confirm  重ねて出す画面（音の出口を選ぶ / 使うマイク /\n"
-        "                        ささけんの Frame アプリ / 入れる前の確認 / 一覧から開いた確認）\n"
+        "                        ささけん＠の Frame アプリ / 入れる前の確認 / 一覧から開いた確認）\n"
         "      --preview-scroll PX|end  重ねた画面の一覧のスクロール\n"
         "      --fake-aux missing|installed|running  frame-aux-shortcuts の状態（ほかは見本の状態）\n"
         "      --fake-apps-busy KEYS  Konsole を開いているアプリの呼び名（カンマ区切り。menu はメニュー）\n"

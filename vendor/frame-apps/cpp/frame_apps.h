@@ -29,7 +29,7 @@
 #include <string>
 #include <vector>
 
-#define FRAME_APPS_VERSION "0.3.1"
+#define FRAME_APPS_VERSION "0.3.2"
 
 namespace frame_apps {
 

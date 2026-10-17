@@ -219,6 +219,20 @@ void outputSelfTests(const Expect& expect) {
         sync.update(state, config, "2026-10-10");
         expect("強さ: かけ終わった後に外から変わった値は取り込む", config.outputs[kBuiltinSpeakerKey].nsVad == 99);
 
+        // パネルのバーを動かしている途中（離すまで保存しない）: 書き終わってから読んだ値は、パネルで変えた値として覚える
+        sync.noteWrite(5);
+        state.nsParams.vad = 50;
+        sync.update(state, config, "2026-10-10");
+        expect("バーの途中: 書き終わる前の値は取り込まない", config.outputs[kBuiltinSpeakerKey].nsVad == 99);
+        state.writesDone = 5;
+        sync.update(state, config, "2026-10-10");
+        expect("バーの途中: 書き終わった値はパネルで変えた値として覚える（外から、とは言わない）",
+               config.outputs[kBuiltinSpeakerKey].nsVad == 50 && sync.lastAdoptedFromPanel());
+        state.nsParams.vad = 60;
+        sync.update(state, config, "2026-10-10");
+        expect("バーのあと: 次に外から変わった値は、外からの変化として覚える",
+               config.outputs[kBuiltinSpeakerKey].nsVad == 60 && !sync.lastAdoptedFromPanel());
+
         // 出口が変わった（AB13X を既定にした）: 初めての出口なのでイヤホンのプリセットを作ってかけ、知らせを出す
         worker.commands.clear();
         AudioDevices switched = frame;
