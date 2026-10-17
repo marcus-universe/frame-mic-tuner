@@ -67,9 +67,8 @@ enum class PanelAction {
     AppsConfirmCancel,///< 確認の「やめる」（パネルの中で戻る）
     AppsConfirmLaunch,///< 確認の「Konsole で開く」（key = 呼び名。空ならメニュー）
     // ---- 一番下の行 ----
-    LanguageJa,
-    LanguageEn,
-    LanguageSc,
+    LanguageMenu,     ///< 言語の一覧を開く・閉じる
+    LanguagePick,     ///< 言語を選ぶ（index = Language の番号、key = 言語コード）
     AutostartOn,      ///< SteamVR と一緒に起動: オン
     AutostartOff,     ///< SteamVR と一緒に起動: オフ
     Quit,             ///< 終了（2 回目の押下で確定したときだけ返る）
@@ -361,6 +360,7 @@ private:
     bool viewingActive_ = true;
     bool quitArmed_ = false;
     double quitArmedUntil_ = 0.0;
+    bool languageOpen_ = false;    ///< 言語の一覧が開いている
     bool updateArmed_ = false;     ///< 「更新する」の 1 回目が押された（確認の表示）
     double updateArmedUntil_ = 0.0;
     double now_ = 0.0;             ///< tick() で知らされた時刻
@@ -438,6 +438,8 @@ private:
     void drawUpdateBox(const frame_ui::Canvas& ui, const UiText& t, frame_ui::Lang lang, const Config& config,
                        const frame_updater::UpdateStatus& update, frame_ui::Rect box);
     void drawFooter(const frame_ui::Canvas& ui, const UiText& t, const Config& config, const MicState& state);
+    /** 言語の一覧（足のドロップダウンの上に出す。開いているときだけ）。 */
+    void drawLanguageMenu(const frame_ui::Canvas& ui, Language current);
     void drawOutputPicker(const frame_ui::Canvas& ui, const UiText& t, const Config& config, const PanelModel& model);
     void drawMicPicker(const frame_ui::Canvas& ui, const UiText& t, const PanelModel& model);
     /** アプリと更新の画面の右のカード（いっしょに使うアプリと、一覧を開く行）。 */

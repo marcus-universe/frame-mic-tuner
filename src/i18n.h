@@ -1,23 +1,31 @@
-// 画面に出す文言の表（日本語・英語・簡体字中国語）。描画コードの中に文言を書かず、ここから引く。
-// 一番下の行（言語・SteamVR と一緒に起動・終了）と更新の文言の多くは、共通の UI 部品 frame-ui の表（frame_ui::strings）を使う。
+// 画面に出す文言の表（日本語・英語・簡体字中国語・ドイツ語・フランス語・スペイン語・イタリア語）。
+// 描画コードの中に文言を書かず、ここから引く。
+// 一番下の行のうち SteamVR と一緒に起動・終了はこの表。言語の名前はその言語自身の書き方（languageEndonym）。
+// 更新の帯と、いっしょに使うアプリのカタログは frame-ui / frame-apps の表（ja / en / sc だけ。ほかの言語は英語）。
 // ログや --print の出力は日本語のまま（ここには入れない）。
 #pragma once
 
 #include <string>
 
 /** 表示の言語。 */
-enum class Language { Ja, En, Sc };
+enum class Language { Ja, En, Sc, De, Fr, Es, It };
+
+/** メニューと自己テストで回す言語の並び。 */
+inline constexpr Language kLanguages[] = {Language::Ja, Language::En, Language::Sc, Language::De,
+                                          Language::Fr, Language::Es, Language::It};
 
 /**
  * Frame のシステム言語（設定ファイルに language が無いときの既定値）。
- * Steam の言語設定（~/.steam/registry.vdf の "language"、読むだけ）が日本語なら日本語、簡体字中国語なら簡体字中国語。
- * Steam の設定が読めなければ LC_ALL / LC_MESSAGES / LANG を見て、どれでもなければ英語。結果は最初の 1 回だけ調べて覚えておく。
+ * Steam の言語設定（~/.steam/registry.vdf の "language"、読むだけ）を見る。
+ * japanese / schinese / german / french / spanish / italian。それ以外の Steam の言語は英語。
+ * Steam の設定が読めなければ LC_ALL / LC_MESSAGES / LANG の接頭辞 ja / zh_CN / de / fr / es / it を見て、どれでもなければ英語。
+ * 結果は最初の 1 回だけ調べて覚えておく。
  * @return 言語
  */
 Language systemLanguage();
 
 /**
- * パネルの文言一式（3 つの表は、このフィールドの順に並べる）。
+ * パネルの文言一式（7 つの表は、このフィールドの順に並べる）。
  */
 struct UiText {
     // ---- 見出し ----
@@ -181,6 +189,10 @@ struct UiText {
     const char* appsErrorNoDisplay;     ///< LaunchResult::NoDisplay
     const char* appsErrorNoKonsole;     ///< LaunchResult::NoKonsole
     const char* appsErrorFailed;        ///< LaunchResult::Failed・UnknownApp
+    // ---- 一番下の行（言語の名前は languageEndonym。オン／オフは上の on / off） ----
+    const char* footerStart;         ///< SteamVR と一緒に起動
+    const char* footerQuit;          ///< 終了
+    const char* footerQuitConfirm;   ///< もう一度押すと終了
 };
 
 /**
@@ -193,14 +205,21 @@ const UiText& uiText(Language language);
 /**
  * 設定ファイルに書く言語の名前。
  * @param language 言語
- * @return "ja" / "en" / "sc"
+ * @return "ja" / "en" / "sc" / "de" / "fr" / "es" / "it"
  */
 const char* languageCode(Language language);
 
 /**
  * 設定ファイルの言語の名前を読む。
- * @param code "ja" / "en" / "sc"
+ * @param code "ja" / "en" / "sc" / "de" / "fr" / "es" / "it"
  * @param language 読めたときの書き込み先
  * @return 知っている名前なら true
  */
 bool parseLanguage(const std::string& code, Language& language);
+
+/**
+ * 言語の名前を、その言語自身の書き方で返す（メニューの中も、閉じたボタンもこれ）。
+ * @param language 言語
+ * @return 日本語 / English / 简体中文 / Deutsch / Français / Español / Italiano
+ */
+const char* languageEndonym(Language language);

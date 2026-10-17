@@ -2,7 +2,7 @@
 
 A SteamVR dashboard panel for the Steam Frame that switches the headset microphone's echo cancellation and noise suppression while you're wearing it. Turn echo cancellation off when you use earphones, so quiet sounds like mouth noises come through clearly, and back on when you use the Frame's speakers, so their sound doesn't leak into your mic. A built-in voice check records a few seconds of what apps actually hear, so you can compare settings on the spot.
 
-[日本語版はこちら](README.ja.md)
+[日本語](README.ja.md) · [简体中文](README.sc.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Italiano](README.it.md)
 
 | Quick (presets) | Fine-tune |
 |---|---|
@@ -23,7 +23,7 @@ https://github.com/user-attachments/assets/14b5e180-f417-4d90-85f5-6ba1dc573546
 - **Mute**: the header shows "In use", "Not in use" or a red "Muted" (muted from Steam, `wpctl`, an aux button or anywhere else), and a **Mute** / **Unmute** button right next to it.
 - **Voice check**: records up to 10 seconds of the final sound that apps receive, keeps the last 5 recordings, and plays them back through the current output. Each recording shows the time, length, the output and setting it was made with (for example "AB13X · Echo cancel off") and a small waveform.
 - **Apps & updates** (button at the top right; a pink dot means there's something to look at): the running version, **Check now** and **Update**, the **Check for updates** switch, and the author's other Steam Frame apps. The one this app works with, frame-aux-shortcuts (toggles the mic mute with the aux button), is listed first; the others are one tap away. Installing opens the installer in Konsole after showing you the exact command.
-- Japanese, English, and Simplified Chinese UI. Text and controls meet WCAG 2.x AA contrast.
+- Japanese, English, Simplified Chinese, German, French, Spanish and Italian UI. Text and controls meet WCAG 2.x AA contrast.
 
 Why this is needed: while an app uses the mic, SteamOS runs it through EQ, echo cancellation and noise suppression. Echo cancellation strongly reduces small sounds, and noise suppression silences anything that doesn't sound like a voice. With earphones there is no speaker sound to cancel, so turning echo cancellation off lets more of your voice through.
 
@@ -100,7 +100,7 @@ To remove it: `./install.sh --uninstall`, then restart the headset to get SteamO
 5. **Mute** / **Unmute** (top, next to the status): mutes or unmutes the default mic at once, without asking.
 6. **Voice check**: press **Record**, say something, and press **Stop** (it stops by itself after 10 seconds). Switch the setting, record again, and use ▶ on each row to compare. Recording stops as soon as you close the panel.
 7. **Start with SteamVR** (bottom row): turn it on to have the app start automatically with SteamVR from now on. You can also enable it with `./install.sh --autostart`.
-8. **Language**: the panel starts in your Steam Frame's language (Japanese for Japanese, Simplified Chinese for Simplified Chinese, English otherwise). Change it with **日本語 / English / 简体中文** at the bottom left; your choice is saved.
+8. **Language**: the panel starts in your Steam Frame's language (Japanese, Simplified Chinese, German, French, Spanish or Italian when Steam is set to that language, English otherwise). Change it with the menu at the bottom left (日本語, English, 简体中文, Deutsch, Français, Español, Italiano); your choice is saved.
 9. **Quit**: press it twice, or hover over the Mic icon in the dashboard and choose Close.
 10. **Apps & updates** (top right; **← Mic settings** goes back). **This app** shows the running version, for example "Up to date (0.3.0)". **Check now** looks for a newer release right away (this works even if **Check for updates** is off).
     - When one is available, the box gets an accent-colored border and says "Version X is available". Press **Update**; it asks "Update to X?" with **Cancel** and **Update** (the question goes away by itself after 3 seconds). Press **Update** again to start. The box then shows the progress ("Updating: Downloading", and so on).
@@ -198,3 +198,7 @@ Don't make it a draft or a prerelease: the panel looks at GitHub's latest releas
 ## License
 
 MIT. See [LICENSE](LICENSE). The bundled OpenVR header (`third_party/openvr/`) is BSD-3-Clause by Valve Corporation. `vendor/frame-updater/`, `vendor/frame-ui/` and `vendor/frame-apps/` (including the other apps' icons built into the program) are copies of the author's own code and are MIT like the rest of this repository. Licenses of the bundled header and the libraries it uses are listed in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+
+## Icons
+
+The language menu uses [language-16-solid](https://icon-sets.iconify.design/heroicons/language-16-solid/) from [Heroicons](https://github.com/tailwindlabs/heroicons) by Tailwind Labs, MIT, via [Iconify](https://icon-sets.iconify.design/).

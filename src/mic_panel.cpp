@@ -183,6 +183,234 @@ void beginIcon(cairo_t* cr, double x, double y, double size, double box, Color c
     cairo_new_path(cr);
 }
 
+// assets/heroicons-language-16-solid.svg の d（実行時に取りに行かない。evenodd で塗る）。
+constexpr const char* kLanguageIconPath =
+    "M11 5a.75.75 0 0 1 .688.452l3.25 7.5a.75.75 0 1 1-1.376.596L12.89 12H9.109l-.67 1.548a.75.75 0 1 1-1.377-.596l3.25-7.5A.75.75 0 0 1 11 5m-1.24 5.5h2.48L11 7.636zM5 1a.75.75 0 0 1 .75.75v1.261a25 25 0 0 1 2.598.211a.75.75 0 1 1-.2 1.487q-.33-.045-.662-.08A13 13 0 0 1 5.92 8.058q.356.456.752.873a.75.75 0 0 1-1.086 1.035A13 13 0 0 1 5 9.307a13 13 0 0 1-2.841 2.546a.75.75 0 0 1-.827-1.251A11.6 11.6 0 0 0 4.08 8.057a13 13 0 0 1-.554-.938a.75.75 0 1 1 1.323-.707l.15.271c.388-.68.708-1.405.952-2.164a24 24 0 0 0-4.1.19a.75.75 0 0 1-.2-1.487q1.28-.171 2.598-.211V1.75A.75.75 0 0 1 5 1";
+
+bool readSvgNumber(const char*& p, double& out) {
+    while (*p == ' ' || *p == ',') ++p;
+    if (*p == '\0') return false;
+    char* end = nullptr;
+    out = std::strtod(p, &end);
+    if (end == p) return false;
+    p = end;
+    return true;
+}
+
+/**
+ * SVG の円弧を 3 次ベジェにする（viewBox の単位。現在位置を更新する）。
+ */
+void svgArc(cairo_t* cr, double& cx, double& cy, double rx, double ry, double phiDeg, bool large, bool sweep, double x2, double y2) {
+    if (rx == 0.0 || ry == 0.0 || (cx == x2 && cy == y2)) {
+        cairo_line_to(cr, x2, y2);
+        cx = x2;
+        cy = y2;
+        return;
+    }
+    const double phi = phiDeg * M_PI / 180.0;
+    const double sinPhi = std::sin(phi);
+    const double cosPhi = std::cos(phi);
+    const double dx = (cx - x2) / 2.0;
+    const double dy = (cy - y2) / 2.0;
+    const double x1p = cosPhi * dx + sinPhi * dy;
+    const double y1p = -sinPhi * dx + cosPhi * dy;
+    rx = std::fabs(rx);
+    ry = std::fabs(ry);
+    const double lambda = (x1p * x1p) / (rx * rx) + (y1p * y1p) / (ry * ry);
+    if (lambda > 1.0) {
+        const double scale = std::sqrt(lambda);
+        rx *= scale;
+        ry *= scale;
+    }
+    const double rx2 = rx * rx;
+    const double ry2 = ry * ry;
+    const double num = rx2 * ry2 - rx2 * y1p * y1p - ry2 * x1p * x1p;
+    const double den = rx2 * y1p * y1p + ry2 * x1p * x1p;
+    double coef = den == 0.0 ? 0.0 : std::sqrt(std::max(0.0, num / den));
+    if (large == sweep) coef = -coef;
+    const double cxp = coef * rx * y1p / ry;
+    const double cyp = coef * -ry * x1p / rx;
+    const double centerX = cosPhi * cxp - sinPhi * cyp + (cx + x2) / 2.0;
+    const double centerY = sinPhi * cxp + cosPhi * cyp + (cy + y2) / 2.0;
+    const auto angleBetween = [](double ux, double uy, double vx, double vy) {
+        const double dot = ux * vx + uy * vy;
+        const double len = std::sqrt((ux * ux + uy * uy) * (vx * vx + vy * vy));
+        double ang = len == 0.0 ? 0.0 : std::acos(std::clamp(dot / len, -1.0, 1.0));
+        if (ux * vy - uy * vx < 0.0) ang = -ang;
+        return ang;
+    };
+    const double theta1 = angleBetween(1.0, 0.0, (x1p - cxp) / rx, (y1p - cyp) / ry);
+    double dtheta = angleBetween((x1p - cxp) / rx, (y1p - cyp) / ry, (-x1p - cxp) / rx, (-y1p - cyp) / ry);
+    if (!sweep && dtheta > 0.0) dtheta -= 2.0 * M_PI;
+    if (sweep && dtheta < 0.0) dtheta += 2.0 * M_PI;
+    const int segments = std::max(1, static_cast<int>(std::ceil(std::fabs(dtheta) / (M_PI / 2.0))));
+    const double delta = dtheta / segments;
+    const double t = std::tan(delta / 4.0) * 4.0 / 3.0;
+    double theta = theta1;
+    const auto mapPoint = [&](double ux, double uy, double& ox, double& oy) {
+        ox = centerX + rx * ux * cosPhi - ry * uy * sinPhi;
+        oy = centerY + rx * ux * sinPhi + ry * uy * cosPhi;
+    };
+    for (int i = 0; i < segments; ++i) {
+        const double cos1 = std::cos(theta);
+        const double sin1 = std::sin(theta);
+        theta += delta;
+        const double cos2 = std::cos(theta);
+        const double sin2 = std::sin(theta);
+        double p1x = 0.0, p1y = 0.0, p2x = 0.0, p2y = 0.0, ex = 0.0, ey = 0.0;
+        mapPoint(cos1 - t * sin1, sin1 + t * cos1, p1x, p1y);
+        mapPoint(cos2 + t * sin2, sin2 - t * cos2, p2x, p2y);
+        mapPoint(cos2, sin2, ex, ey);
+        cairo_curve_to(cr, p1x, p1y, p2x, p2y, ex, ey);
+    }
+    cx = x2;
+    cy = y2;
+}
+
+/**
+ * SVG の path（M L H V C Q A Z と小文字）を cairo の道筋にする。
+ */
+void appendSvgPath(cairo_t* cr, const char* d) {
+    const char* p = d;
+    double cx = 0.0;
+    double cy = 0.0;
+    double sx = 0.0;
+    double sy = 0.0;
+    char command = 0;
+    while (*p != '\0') {
+        while (*p == ' ' || *p == ',') ++p;
+        if (*p == '\0') break;
+        if (std::isalpha(static_cast<unsigned char>(*p))) {
+            command = *p++;
+        } else if (command == 'M') {
+            command = 'L';
+        } else if (command == 'm') {
+            command = 'l';
+        } else if (command == 0) {
+            break;
+        }
+        switch (command) {
+            case 'M':
+            case 'm': {
+                double x = 0.0;
+                double y = 0.0;
+                if (!readSvgNumber(p, x) || !readSvgNumber(p, y)) return;
+                if (command == 'm') {
+                    x += cx;
+                    y += cy;
+                }
+                cairo_move_to(cr, x, y);
+                cx = sx = x;
+                cy = sy = y;
+                break;
+            }
+            case 'L':
+            case 'l': {
+                double x = 0.0;
+                double y = 0.0;
+                if (!readSvgNumber(p, x) || !readSvgNumber(p, y)) return;
+                if (command == 'l') {
+                    x += cx;
+                    y += cy;
+                }
+                cairo_line_to(cr, x, y);
+                cx = x;
+                cy = y;
+                break;
+            }
+            case 'H':
+            case 'h': {
+                double x = 0.0;
+                if (!readSvgNumber(p, x)) return;
+                if (command == 'h') x += cx;
+                cairo_line_to(cr, x, cy);
+                cx = x;
+                break;
+            }
+            case 'V':
+            case 'v': {
+                double y = 0.0;
+                if (!readSvgNumber(p, y)) return;
+                if (command == 'v') y += cy;
+                cairo_line_to(cr, cx, y);
+                cy = y;
+                break;
+            }
+            case 'C':
+            case 'c': {
+                double x1 = 0.0, y1 = 0.0, x2 = 0.0, y2 = 0.0, x = 0.0, y = 0.0;
+                if (!readSvgNumber(p, x1) || !readSvgNumber(p, y1) || !readSvgNumber(p, x2) || !readSvgNumber(p, y2) ||
+                    !readSvgNumber(p, x) || !readSvgNumber(p, y)) {
+                    return;
+                }
+                if (command == 'c') {
+                    x1 += cx;
+                    y1 += cy;
+                    x2 += cx;
+                    y2 += cy;
+                    x += cx;
+                    y += cy;
+                }
+                cairo_curve_to(cr, x1, y1, x2, y2, x, y);
+                cx = x;
+                cy = y;
+                break;
+            }
+            case 'Q':
+            case 'q': {
+                double x1 = 0.0, y1 = 0.0, x = 0.0, y = 0.0;
+                if (!readSvgNumber(p, x1) || !readSvgNumber(p, y1) || !readSvgNumber(p, x) || !readSvgNumber(p, y)) return;
+                if (command == 'q') {
+                    x1 += cx;
+                    y1 += cy;
+                    x += cx;
+                    y += cy;
+                }
+                const double c1x = cx + (2.0 / 3.0) * (x1 - cx);
+                const double c1y = cy + (2.0 / 3.0) * (y1 - cy);
+                const double c2x = x + (2.0 / 3.0) * (x1 - x);
+                const double c2y = y + (2.0 / 3.0) * (y1 - y);
+                cairo_curve_to(cr, c1x, c1y, c2x, c2y, x, y);
+                cx = x;
+                cy = y;
+                break;
+            }
+            case 'A':
+            case 'a': {
+                double rx = 0.0, ry = 0.0, angle = 0.0, large = 0.0, sweep = 0.0, x = 0.0, y = 0.0;
+                if (!readSvgNumber(p, rx) || !readSvgNumber(p, ry) || !readSvgNumber(p, angle) || !readSvgNumber(p, large) ||
+                    !readSvgNumber(p, sweep) || !readSvgNumber(p, x) || !readSvgNumber(p, y)) {
+                    return;
+                }
+                if (command == 'a') {
+                    x += cx;
+                    y += cy;
+                }
+                svgArc(cr, cx, cy, rx, ry, angle, large != 0.0, sweep != 0.0, x, y);
+                break;
+            }
+            case 'Z':
+            case 'z':
+                cairo_close_path(cr);
+                cx = sx;
+                cy = sy;
+                break;
+            default: return;
+        }
+    }
+}
+
+/**
+ * 言語の絵（heroicons language-16-solid。viewBox 16）。
+ */
+void drawLanguageIcon(cairo_t* cr, double x, double y, double size, Color c) {
+    beginIcon(cr, x, y, size, 16, c, 1);
+    cairo_set_fill_rule(cr, CAIRO_FILL_RULE_EVEN_ODD);
+    appendSvgPath(cr, kLanguageIconPath);
+    cairo_fill(cr);
+    cairo_restore(cr);
+}
+
 /**
  * スピーカーの絵（箱・コーンと音の波 2 本。viewBox 40）。
  * @param cr cairo
@@ -589,9 +817,10 @@ std::string errorText(MicError error, const UiText& text) {
 }
 
 frame_ui::Lang uiLang(Language language) {
-    if (language == Language::En) return frame_ui::Lang::En;
+    // 更新の帯は frame-ui（日本語・英語・簡体字中国語）。それ以外は英語に戻す。
+    if (language == Language::Ja) return frame_ui::Lang::Ja;
     if (language == Language::Sc) return frame_ui::Lang::Sc;
-    return frame_ui::Lang::Ja;
+    return frame_ui::Lang::En;
 }
 
 std::string outputDisplayName(const std::string& key, const std::string& name, const UiText& t) {
@@ -800,6 +1029,22 @@ PanelHit MicPanel::pointerDown(double x, double y, double now) {
     bool inList = false;
     PanelHit hit = hitTest(x, y, &inList);
     hover_ = hit;
+    // 言語の一覧: 選ぶか、もう一度押すか、隣を押すと閉じる。隣を押したときはそのボタンは動かさない
+    if (languageOpen_ || hit.action == PanelAction::LanguageMenu) {
+        quitArmed_ = false;
+        updateArmed_ = false;
+    }
+    if (languageOpen_) {
+        const bool pick = hit.action == PanelAction::LanguagePick;
+        languageOpen_ = false;
+        if (!pick) return {};
+        applyLocal(hit);
+        return hit;
+    }
+    if (hit.action == PanelAction::LanguageMenu) {
+        languageOpen_ = true;
+        return {};
+    }
     if (inList || (overlay_ != PanelOverlay::None && listRect_.contains(x, y) && hit.action == PanelAction::None)) {
         // 一覧の中: 離したときに返す（そのまま動かせばスクロール）
         listTracking_ = true;
@@ -1938,28 +2183,108 @@ void MicPanel::drawAppsConfirm(const frame_ui::Canvas& ui, const UiText& t, cons
 // ============================================================================
 
 void MicPanel::drawFooter(const frame_ui::Canvas& ui, const UiText& t, const Config& config, const MicState& state) {
-    frame_ui::FooterView view;
-    view.lang = uiLang(config.language);
-    view.autostart = state.autostart == Autostart::Enabled ? 1 : (state.autostart == Autostart::Disabled ? 0 : -1);
-    view.autostartEnabled = state.autostart == Autostart::Enabled || state.autostart == Autostart::Disabled;
-    view.quitArmed = quitArmed_;
+    cairo_t* cr = ui.cr;
+    const Rect r = kFooterRect;
+    const double controlY = r.y + (frame_ui::kFooterRowH - frame_ui::kControlH) / 2;
+    const double icon = 22;
+    // 言語の絵は足の文字色。ドロップダウンはその右。frame-ui の drawFooter は 3 言語の切り替えなので、ここでは使わない。
+    drawLanguageIcon(cr, r.x, controlY + (frame_ui::kControlH - icon) / 2, icon, kLabelSoft);
+    const Rect drop {r.x + icon + 10, controlY, 220, frame_ui::kControlH};
+    const int dropLook = look(drop);
+    const Color dropFill = dropLook == 2 ? kControlDown : (dropLook == 1 || languageOpen_ ? kControlHover : kControl);
+    fillRounded(cr, drop, 16, dropFill);
+    strokeRounded(cr, drop, 16, languageOpen_ ? kAccent : kBorder, 2);
+    const std::string current = languageEndonym(config.language);
+    const double nameSize = ui.fit(current, 18, 13, drop.w - 46, true);
+    ui.text(drop.x + 16, frame_ui::centerBaseline(drop.y, drop.h, nameSize), current, nameSize, rgb(kText), true);
+    cairo_save(cr);
+    setColor(cr, kTextMuted);
+    cairo_set_line_width(cr, 2);
+    cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+    cairo_set_line_join(cr, CAIRO_LINE_JOIN_ROUND);
+    const double chevronX = drop.right() - 26;
+    const double chevronY = drop.y + drop.h / 2 - 3;
+    if (languageOpen_) {
+        cairo_move_to(cr, chevronX, chevronY + 5);
+        cairo_line_to(cr, chevronX + 5, chevronY);
+        cairo_line_to(cr, chevronX + 10, chevronY + 5);
+    } else {
+        cairo_move_to(cr, chevronX, chevronY);
+        cairo_line_to(cr, chevronX + 5, chevronY + 5);
+        cairo_line_to(cr, chevronX + 10, chevronY);
+    }
+    cairo_stroke(cr);
+    cairo_restore(cr);
+    addButton({PanelAction::LanguageMenu}, drop);
+
+    const bool autoEnabled = state.autostart == Autostart::Enabled || state.autostart == Autostart::Disabled;
+    const std::string quitLabel = quitArmed_ ? t.footerQuitConfirm : t.footerQuit;
+    const double quitW = quitArmed_ ? frame_ui::buttonWidth(ui, quitLabel, 160) : 160;
+    const Rect quitRect {r.right() - quitW, controlY, quitW, frame_ui::kControlH};
+    addButton({PanelAction::Quit},
+              frame_ui::drawButton(ui, quitRect, quitLabel, quitArmed_ ? frame_ui::ButtonKind::DangerArmed : frame_ui::ButtonKind::Danger));
+    const double autoW = 180;
+    const double autoX = quitRect.x - 18 - autoW;
+    const int autostart = state.autostart == Autostart::Enabled ? 0 : state.autostart == Autostart::Disabled ? 1 : -1;
+    const std::vector<Rect> onOff =
+        frame_ui::drawSegmented(ui, {autoX, controlY, autoW, frame_ui::kControlH}, {t.on, t.off}, autostart, autoEnabled);
+    addButton({PanelAction::AutostartOn}, onOff[0]);
+    addButton({PanelAction::AutostartOff}, onOff[1]);
+    // 「SteamVR と一緒に起動」は言語の横ではなく、オン・オフのすぐ左。
+    const double labelRight = autoX - 14;
+    const double labelRoom = std::max(1.0, labelRight - (drop.right() + 18));
+    const double labelSize = ui.fit(t.footerStart, frame_ui::kFooterLabelSize, 12, labelRoom);
+    const std::string startLabel = ui.ellipsize(t.footerStart, labelSize, labelRoom);
+    ui.text(labelRight - ui.measure(startLabel, labelSize), frame_ui::centerBaseline(r.y, frame_ui::kFooterRowH, labelSize),
+            startLabel, labelSize, rgb(kLabelSoft));
+
     // 注意書き（1 行だけ）: 失敗（赤）があればそれ、無ければ自動起動が使えない理由、どちらも無ければ説明
+    std::string note = t.footer;
+    bool noteIsError = false;
     const MicError error = state.writeError != MicError::None ? state.writeError : state.readError;
     if (error != MicError::None) {
-        view.note = errorText(error, t);
-        view.noteIsError = true;
-    } else if (state.loaded && !view.autostartEnabled) {
-        view.note = state.autostart == Autostart::Missing ? t.autostartMissing : t.autostartUnknown;
-    } else {
-        view.note = t.footer;
+        note = errorText(error, t);
+        noteIsError = true;
+    } else if (state.loaded && !autoEnabled) {
+        note = state.autostart == Autostart::Missing ? t.autostartMissing : t.autostartUnknown;
     }
-    const frame_ui::FooterHits hits = frame_ui::drawFooter(ui, kFooterRect, view);
-    addButton({PanelAction::LanguageJa}, hits.langJa);
-    addButton({PanelAction::LanguageEn}, hits.langEn);
-    addButton({PanelAction::LanguageSc}, hits.langSc);
-    addButton({PanelAction::AutostartOn}, hits.autostartOn);
-    addButton({PanelAction::AutostartOff}, hits.autostartOff);
-    addButton({PanelAction::Quit}, hits.quit);
+    if (!note.empty()) {
+        const double size = ui.fit(note, frame_ui::kHintSize, 12, r.w, noteIsError);
+        ui.text(r.x, r.y + frame_ui::kFooterRowH + 8 + 15, ui.ellipsize(note, size, r.w, noteIsError), size,
+                rgb(noteIsError ? kDangerText : kTextMuted), noteIsError);
+    }
+}
+
+void MicPanel::drawLanguageMenu(const frame_ui::Canvas& ui, Language current) {
+    Rect drop {};
+    for (const auto& button : buttons_) {
+        if (button.hit.action == PanelAction::LanguageMenu) drop = button.rect;
+    }
+    if (drop.w <= 0) return;
+    cairo_t* cr = ui.cr;
+    constexpr int count = static_cast<int>(sizeof(kLanguages) / sizeof(kLanguages[0]));
+    const double rowH = 44;
+    const double pad = 6;
+    const double listH = pad * 2 + count * rowH;
+    const Rect box {drop.x, drop.y - 8 - listH, drop.w, listH};
+    fillRounded(cr, box, 16, kCard);
+    strokeRounded(cr, box, 16, kBorder, 2);
+    for (int i = 0; i < count; ++i) {
+        const Language language = kLanguages[i];
+        const Rect row {box.x + 4, box.y + pad + i * rowH, box.w - 8, rowH};
+        const bool selected = language == current;
+        const int hover = look(row);
+        if (selected) {
+            fillRounded(cr, row, 10, kAccentTint);
+        } else if (hover > 0) {
+            fillRounded(cr, row, 10, hover == 2 ? kControlDown : kControlHover);
+        }
+        const char* name = languageEndonym(language);
+        const double size = ui.fit(name, 18, 13, row.w - 44, true);
+        ui.text(row.x + 12, frame_ui::centerBaseline(row.y, row.h, size), name, size, rgb(selected ? kAccentText : kText), true);
+        if (selected) frame_ui::drawCheck(cr, row.right() - 16, row.y + row.h / 2, 14, frame_ui::kAccent);
+        addButton({PanelAction::LanguagePick, static_cast<int>(language), languageCode(language)}, row);
+    }
 }
 
 // ============================================================================
@@ -2200,6 +2525,12 @@ void MicPanel::render(const Config& config, const PanelModel& model) {
     }
     drawHeader(back, t, model);
     drawFooter(back, t, config, model.state);
+
+    if (modal) {
+        languageOpen_ = false;
+    } else if (languageOpen_) {
+        drawLanguageMenu(back, config.language);
+    }
 
     if (modal) {
         pointer_ = live;

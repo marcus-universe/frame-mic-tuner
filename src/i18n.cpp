@@ -50,14 +50,22 @@ Language detectSystemLanguage() {
     if (!steam.empty()) {
         if (steam == "japanese") return Language::Ja;
         if (steam == "schinese" || steam == "chinese") return Language::Sc;
+        if (steam == "german") return Language::De;
+        if (steam == "french") return Language::Fr;
+        if (steam == "spanish") return Language::Es;
+        if (steam == "italian") return Language::It;
         return Language::En;
     }
     if (localeEnvVarsAreSetTo("ja")) return Language::Ja;
     if (localeEnvVarsAreSetTo("zh_CN")) return Language::Sc;
+    if (localeEnvVarsAreSetTo("de")) return Language::De;
+    if (localeEnvVarsAreSetTo("fr")) return Language::Fr;
+    if (localeEnvVarsAreSetTo("es")) return Language::Es;
+    if (localeEnvVarsAreSetTo("it")) return Language::It;
     return Language::En;
 }
 
-// 3 つの表は UiText のフィールドの順（i18n.h の区切りごと）に並べる
+// 7 つの表は UiText のフィールドの順（i18n.h の区切りごと）に並べる
 const UiText kJapanese = {
     // 見出し
     "マイク", "使用中", "未使用", "ミュート中", "読み込み中…", "状態不明", "ミュートする", "ミュートを解除",
@@ -135,6 +143,8 @@ const UiText kJapanese = {
     "やめる", "Konsole で開く",
     "同じアプリの Konsole がまだ開いています", "Konsole を開けませんでした: 画面が見つかりません（DISPLAY がありません）",
     "Konsole を開けませんでした: Konsole が入っていません", "Konsole を開けませんでした",
+    // 一番下の行
+    "SteamVR と一緒に起動", "終了", "もう一度押すと終了",
 };
 
 const UiText kEnglish = {
@@ -213,6 +223,8 @@ const UiText kEnglish = {
     "Cancel", "Open in Konsole",
     "A Konsole for this app is still open", "Couldn't open Konsole: no screen (DISPLAY isn't set)",
     "Couldn't open Konsole: Konsole isn't installed", "Couldn't open Konsole",
+    // 一番下の行
+    "Start with SteamVR", "Quit", "Press again to quit",
 };
 
 const UiText kSimplifiedChinese = {
@@ -290,13 +302,344 @@ const UiText kSimplifiedChinese = {
     "取消", "在 Konsole 中打开",
     "这个应用的 Konsole 还开着", "无法打开 Konsole：找不到屏幕（没有 DISPLAY）",
     "无法打开 Konsole：没有安装 Konsole", "无法打开 Konsole",
+    // 一番下の行
+    "随 SteamVR 启动", "退出", "再按一次退出",
 };
+
+const UiText kGerman = {
+    // Kopf
+    "Mikrofon", "In Gebrauch", "Nicht in Gebrauch", "Stumm", "Laden…", "Unbekannt", "Stummschalten", "Stummschaltung aus",
+    "Apps & Updates", "Mikrofoneinstellungen",
+    // Ausgang und Mikrofon
+    "Ausgang", "Mikrofon", "%d", "Frame-Lautsprecher", "Lautsprecher", "Frame-Mikrofon", "Eingebaut", "Mikrofon von %s",
+    // Tabs
+    "Schnell", "Feinjustierung",
+    // Schnell
+    "Beim Hören über %s",
+    "Ohrhörer / Kopfhörer", "Frame-Lautsprecher",
+    "Leise Töne kommen durch", "Hält Lautsprecherklang vom Mikrofon fern",
+    "Echounterdrückung aus", "Echounterdrückung an", "Rauschfilter aus",
+    "%s benutzt immer diese Einstellung. Sie wechselt automatisch, wenn du es anschließt",
+    "Gerade gelten die Einstellungen der Feinjustierung",
+    "%s angeschlossen, also gilt die gespeicherte Einstellung", "Rückgängig",
+    // Feinjustierung
+    "Echounterdrückung", "Entfernt Lautsprecherklang", "Rauschfilter", "Schneidet auch leise Mundgeräusche", "Ein", "Aus",
+    "Strenge", "Niedriger lässt mehr durch", "Nachklang", "Ton nach dem Sprechen", "Wirkt nicht, solange aus", "Standard",
+    "Standard: 23 % · 500 ms (SteamOS)",
+    // Externes Mikrofon
+    "Gerade wird %s benutzt",
+    "Echounterdrückung und Rauschfilter gelten nur für das eingebaute Frame-Mikrofon. Der Ton dieses Mikrofons geht unverändert an Apps.",
+    "Die Einstellung für %1$s (%2$s) gilt, wenn du zum eingebauten Mikrofon zurückwechselst", "Eingebautes Mikrofon benutzen",
+    // Zusammenfassung
+    "Echounterdrückung an", "Echounterdrückung aus", ", Rauschfilter an", " · ",
+    // Signalweg
+    "Signalweg", "Mikrofon", "EQ", "Echounterdrückung", "Rauschfilter", "Zu Apps", "Nicht in Gebrauch, Filter ruhen",
+    "Signalweg nicht lesbar",
+    // Stimmtest
+    "Stimmtest", "Nimm auf, was Apps hören, und vergleiche", "Aufnehmen", "Stopp", "Aufnahme", "s", "%.1f s · noch %.1f s",
+    "Bis zu 10 s mit dem aktiven Mikrofon aufnehmen", "Noch keine Aufnahmen", "Mikrofon %s (ohne Verarbeitung)", "Unbekannte Einstellung",
+    // Fußnote
+    "Änderungen gelten sofort und werden je Ausgang gemerkt. Aufnahmen bleiben im Speicher und verschwinden beim Beenden",
+    "Autostart ist nicht installiert (./install.sh ausführen)", "Autostart-Status nicht lesbar",
+    // Fehler
+    "Lesen fehlgeschlagen (wpctl)", "Mikrofon-Umschaltung ist nicht installiert (./install.sh, dann neu starten)",
+    "Signalweg nicht lesbar (pw-link)", "Umschalten fehlgeschlagen (wpctl)", "Autostart-Änderung fehlgeschlagen (systemctl)",
+    "Aufnahme startet nicht (PipeWire)", "Wiedergabe nicht möglich (PipeWire)", "Rauschfilter nicht änderbar (pw-cli)",
+    "Echounterdrückung fehlgeschlagen (wpctl)", "Rauschfilter-Umschaltung fehlgeschlagen (wpctl)",
+    "Stummschaltung nicht aufgehoben (wpctl)", "Stummschalten fehlgeschlagen (wpctl)",
+    "Ausgang nicht gewechselt (wpctl)", "Mikrofon nicht gewechselt (wpctl)",
+    // Ausgang wählen
+    "Ausgang wählen", "Merkt die Frame-Mikrofoneinstellung je Ausgang und wechselt beim Anschließen",
+    "Verbunden", "Früher benutzt (jetzt nicht verbunden)",
+    "Gerade aktiv", "Verbunden", "Zuletzt benutzt %s", "Früher benutzt", "Einstellungen angezeigt",
+    "Hier wiedergeben", "Vergessen",
+    "Neue Ausgänge starten bei den Frame-Lautsprechern mit der Lautsprecher-Einstellung und sonst mit Ohrhörer. "
+    "\"Hier wiedergeben\" wechselt denselben Ausgang wie die Audioeinstellung von SteamVR. Lange Listen mit dem Stick oder durch Ziehen scrollen",
+    // Mikrofon
+    "Mikrofon wählen", "Echounterdrückung und Rauschfilter gelten nur für das eingebaute Frame-Mikrofon",
+    "Echounterdrückung und Rauschfilter sind aktiv", "Keine Verarbeitung (direkt zu Apps)", "Dieses Mikrofon benutzen",
+    // Apps
+    "Diese App", "Schaltet Echounterdrückung und Rauschfilter des Mikrofons um",
+    "Prüft beim Start und einmal am Tag auf GitHub nach einer neuen Version", "Prüft nicht von selbst. „Jetzt prüfen“ benutzen",
+    "Nach Updates suchen", "Wenn aus, wird nichts von GitHub oder der App-Liste (frame.sasaken1102s.net) geholt",
+    "Anleitung · Problem melden",
+    "Lädt die neue Version und installiert sie. Beenden und neu starten, um sie zu nutzen",
+    "%s ist installiert. Beenden und neu starten, um sie zu nutzen",
+    "Wenn sich auch das WirePlumber-Skript geändert hat, das Headset neu starten (siehe ~/.cache/frame-mic-tuner/update.log)",
+    "Release-Seite: ",
+    "Begleit-Apps", "Nur die Apps, die diese App benutzt", "Schaltet die Stummschaltung mit der Aux-Taste um",
+    "Frame-Apps von sasaken@", "%2$d von %1$d nicht installiert", "Alle %d sind installiert",
+    "Installieren", "Läuft", "Installiert", "Läuft in Konsole…", "Von dieser App benutzt",
+    "Beim Installieren öffnet sich das Installationsprogramm in Konsole. Kein sudo; alles landet im Home-Ordner",
+    "Installieren, aktualisieren und entfernen im Installationsprogramm in Konsole",
+    "Bei eingeschalteter Update-Prüfung kommt diese Liste von frame.sasaken1102s.net (höchstens stündlich; sonst die letzte oder die eingebaute)",
+    "Installationsprogramm öffnen",
+    "%s installieren", "Installationsprogramm öffnen", "Konsole öffnet sich und führt diesen Befehl aus",
+    "Konsole zeigt den Fortschritt (Fragen dort beantworten)",
+    "Im Menü die Apps zum Installieren, Aktualisieren oder Entfernen per Nummer wählen",
+    "Kein sudo; alles landet im Home-Ordner",
+    "Konsole schließen, wenn es fertig ist; dieses Fenster aktualisiert sich auch",
+    "Abbrechen", "In Konsole öffnen",
+    "Eine Konsole für diese App ist noch offen", "Konsole ließ sich nicht öffnen: kein Bildschirm (DISPLAY fehlt)",
+    "Konsole ließ sich nicht öffnen: Konsole ist nicht installiert", "Konsole ließ sich nicht öffnen",
+    // 一番下の行
+    "Mit SteamVR starten", "Beenden", "Nochmal drücken zum Beenden",
+};
+
+const UiText kFrench = {
+    // En-tête
+    "Micro", "En cours", "Inutilisé", "Muet", "Chargement…", "Inconnu", "Couper le son", "Rétablir le son",
+    "Apps et mises à jour", "Réglages du micro",
+    // Sortie et micro
+    "Sortie", "Micro", "%d", "Haut-parleurs Frame", "Haut-parleur", "Micro intégré Frame", "Intégré", "Micro %s",
+    // Onglets
+    "Rapide", "Réglage fin",
+    // Rapide
+    "Quand l'écoute passe par %s",
+    "Écouteurs / casque", "Haut-parleurs Frame",
+    "Les sons faibles passent", "Garde le son des haut-parleurs hors du micro",
+    "Annulation d'écho : arrêt", "Annulation d'écho : marche", "Filtre de bruit : arrêt",
+    "%s utilise toujours ce réglage. Il change tout seul quand tu le branches",
+    "Les réglages fins sont utilisés pour l'instant",
+    "%s est branché, donc son réglage enregistré est actif", "Annuler",
+    // Réglage fin
+    "Annulation d'écho", "Retire le son des haut-parleurs", "Filtre de bruit", "Coupe aussi les sons de bouche faibles", "Marche", "Arrêt",
+    "Sévérité", "Plus bas laisse passer plus", "Tenue", "Son gardé après la voix", "Sans effet tant que c'est arrêté", "Défaut",
+    "Défaut : 23 % · 500 ms (SteamOS)",
+    // Micro externe
+    "Utilisation de %s",
+    "L'annulation d'écho et le filtre de bruit ne valent que pour le micro intégré du Frame. Le son de ce micro va aux apps tel quel.",
+    "Le réglage pour %1$s (%2$s) s'applique quand tu reviens au micro intégré", "Utiliser le micro intégré",
+    // Résumé
+    "Annulation d'écho marche", "Annulation d'écho arrêt", ", filtre de bruit marche", " · ",
+    // Chemin
+    "Chemin du signal", "Micro", "EQ", "Annulation d'écho", "Filtre de bruit", "Vers les apps", "Inutilisé, les filtres se reposent",
+    "Chemin illisible",
+    // Voix
+    "Contrôle de voix", "Enregistre ce que les apps entendent, puis compare", "Enregistrer", "Stop", "Enregistrement", "s",
+    "%.1f s · %.1f s restantes",
+    "Enregistre jusqu'à 10 s avec le micro en cours", "Pas encore d'enregistrement", "Micro %s (sans traitement)", "Réglage inconnu",
+    // Note
+    "Les changements s'appliquent tout de suite et sont mémorisés par sortie. Les enregistrements restent en mémoire et disparaissent à la fermeture",
+    "Le démarrage auto n'est pas installé (lance ./install.sh)", "État du démarrage auto illisible",
+    // Erreurs
+    "Lecture échouée (wpctl)", "Le basculement du micro n'est pas installé (lance ./install.sh, puis redémarre)",
+    "Lecture du chemin échouée (pw-link)", "Basculement échoué (wpctl)", "Changement du démarrage auto échoué (systemctl)",
+    "Enregistrement impossible (PipeWire)", "Lecture impossible (PipeWire)", "Filtre de bruit non modifiable (pw-cli)",
+    "Basculement de l'écho échoué (wpctl)", "Basculement du filtre de bruit échoué (wpctl)",
+    "Impossible de rétablir le son (wpctl)", "Impossible de couper le son (wpctl)",
+    "Impossible de changer la sortie (wpctl)", "Impossible de changer le micro (wpctl)",
+    // Sortie
+    "Choisir la sortie", "Mémorise les réglages du micro Frame pour chaque sortie et bascule au branchement",
+    "Connectées", "Déjà utilisées (pas connectées)",
+    "En cours", "Connectée", "Dernière utilisation %s", "Déjà utilisée", "Réglages affichés",
+    "Jouer le son ici", "Oublier",
+    "Les nouvelles sorties partent du réglage Haut-parleur pour les haut-parleurs Frame, et du réglage Écouteurs pour le reste. "
+    "« Jouer le son ici » change la même sortie que les réglages audio de SteamVR. Fais défiler une longue liste au stick ou en glissant",
+    // Micro
+    "Micro à utiliser", "L'annulation d'écho et le filtre de bruit ne valent que pour le micro intégré du Frame",
+    "Annulation d'écho et filtre de bruit actifs", "Aucun traitement (direct vers les apps)", "Utiliser ce micro",
+    // Apps
+    "Cette app", "Bascule l'annulation d'écho et le filtre de bruit du micro",
+    "Vérifie GitHub au démarrage et une fois par jour", "Ne vérifie pas tout seul. Utilise « Vérifier »",
+    "Vérifier les mises à jour", "Si c'est arrêté, rien n'est pris sur GitHub ni dans la liste (frame.sasaken1102s.net)",
+    "Mode d'emploi · signaler un problème",
+    "Télécharge et installe la nouvelle version. Quitte et relance l'app pour l'utiliser",
+    "%s est installé. Quitte et relance l'app pour l'utiliser",
+    "Si le script WirePlumber a aussi changé, redémarre le casque (voir ~/.cache/frame-mic-tuner/update.log)",
+    "Page de version : ",
+    "Apps associées", "Seulement les apps que celle-ci utilise", "Bascule la sourdine du micro avec le bouton aux",
+    "Apps Frame de sasaken@", "%2$d sur %1$d non installées", "Les %d sont installées",
+    "Installer", "En cours", "Installée", "En cours dans Konsole…", "Utilisée par cette app",
+    "L'installation ouvre l'installateur dans Konsole. Pas de sudo ; tout va dans le dossier personnel",
+    "Installer, mettre à jour et retirer dans l'installateur de Konsole",
+    "Avec la vérification activée, cette liste vient de frame.sasaken1102s.net (au plus une fois par heure ; sinon la dernière ou celle intégrée)",
+    "Ouvrir l'installateur",
+    "Installer %s", "Ouvrir l'installateur", "Konsole s'ouvre et lance cette commande",
+    "Konsole montre la progression (réponds aux questions là)",
+    "Dans le menu, choisis par numéro les apps à installer, mettre à jour ou retirer",
+    "Pas de sudo ; tout va dans le dossier personnel",
+    "Ferme Konsole quand c'est fini ; ce panneau se met à jour aussi",
+    "Annuler", "Ouvrir dans Konsole",
+    "Une Konsole pour cette app est encore ouverte", "Impossible d'ouvrir Konsole : pas d'écran (DISPLAY absent)",
+    "Impossible d'ouvrir Konsole : Konsole n'est pas installé", "Impossible d'ouvrir Konsole",
+    // 一番下の行
+    "Démarrer avec SteamVR", "Quitter", "Appuyer encore pour quitter",
+};
+
+const UiText kSpanish = {
+    // Encabezado
+    "Micrófono", "En uso", "Sin uso", "Silenciado", "Cargando…", "Desconocido", "Silenciar", "Quitar silencio",
+    "Apps y actualizaciones", "Ajustes del micrófono",
+    // Salida y micrófono
+    "Salida", "Micrófono", "%d", "Altavoces de Frame", "Altavoz", "Micrófono de Frame", "Integrado", "Micrófono de %s",
+    // Pestañas
+    "Rápido", "Ajuste fino",
+    // Rápido
+    "Al escuchar por %s",
+    "Auriculares", "Altavoces de Frame",
+    "Los sonidos bajos se oyen", "Evita que el altavoz entre en el micrófono",
+    "Cancelación de eco: no", "Cancelación de eco: sí", "Filtro de ruido: no",
+    "%s usa siempre este ajuste. Cambia solo al conectarlo",
+    "Ahora se usan los ajustes finos",
+    "%s conectado, así que vale su ajuste guardado", "Deshacer",
+    // Ajuste fino
+    "Cancelación de eco", "Quita el sonido del altavoz", "Filtro de ruido", "También corta sonidos bajos de la boca", "Activado", "Apagado",
+    "Sensibilidad", "Más bajo deja pasar más", "Retención", "Sonido tras hablar", "No hace nada mientras está apagado", "Predeterminado",
+    "Predeterminado: 23 % · 500 ms (SteamOS)",
+    // Micrófono externo
+    "Ahora se usa %s",
+    "La cancelación de eco y el filtro de ruido solo actúan en el micrófono integrado de Frame. El sonido de este micrófono llega a las apps tal cual.",
+    "El ajuste de %1$s (%2$s) se aplica al volver al micrófono integrado", "Usar el micrófono integrado",
+    // Resumen
+    "Eco activado", "Eco apagado", ", filtro de ruido activado", " · ",
+    // Ruta
+    "Ruta de la señal", "Micrófono", "EQ", "Cancelación de eco", "Filtro de ruido", "A las apps", "Sin uso, los filtros descansan",
+    "No se puede leer la ruta",
+    // Voz
+    "Prueba de voz", "Graba lo que oyen las apps y compáralo", "Grabar", "Parar", "Grabando", "s", "%.1f s · quedan %.1f s",
+    "Graba hasta 10 s con el micrófono en uso", "Aún no hay grabaciones", "Micrófono %s (sin procesar)", "Ajuste desconocido",
+    // Nota
+    "Los cambios se aplican al momento y se recuerdan por salida. Las grabaciones se quedan en memoria y desaparecen al salir",
+    "El inicio automático no está instalado (ejecuta ./install.sh)", "No se puede leer el inicio automático",
+    // Errores
+    "Error de lectura (wpctl)", "El cambio de micrófono no está instalado (ejecuta ./install.sh y reinicia)",
+    "Error al leer la ruta (pw-link)", "El cambio falló (wpctl)", "El cambio del inicio automático falló (systemctl)",
+    "No se puede grabar (PipeWire)", "No se puede reproducir (PipeWire)", "No se puede cambiar el filtro de ruido (pw-cli)",
+    "Falló el cambio de eco (wpctl)", "Falló el cambio del filtro de ruido (wpctl)",
+    "No se pudo quitar el silencio (wpctl)", "No se pudo silenciar (wpctl)",
+    "No se pudo cambiar la salida (wpctl)", "No se pudo cambiar el micrófono (wpctl)",
+    // Salida
+    "Elegir la salida", "Recuerda los ajustes del micrófono de Frame para cada salida y cambia al conectarla",
+    "Conectadas", "Usadas antes (ahora no conectadas)",
+    "En uso", "Conectada", "Último uso %s", "Usada antes", "Mostrando ajustes",
+    "Reproducir aquí", "Olvidar",
+    "Las salidas nuevas empiezan con el ajuste de altavoz en los altavoces de Frame y con auriculares en lo demás. "
+    "\"Reproducir aquí\" cambia la misma salida que el audio de SteamVR. Desplaza una lista larga con el stick o arrastrando",
+    // Micrófono
+    "Micrófono a usar", "La cancelación de eco y el filtro de ruido solo actúan en el micrófono integrado de Frame",
+    "Se aplican eco y filtro de ruido", "Sin procesar (directo a las apps)", "Usar este micrófono",
+    // Apps
+    "Esta app", "Cambia la cancelación de eco y el filtro de ruido del micrófono",
+    "Comprueba GitHub al iniciar y una vez al día", "No comprueba sola. Usa \"Comprobar ahora\"",
+    "Buscar actualizaciones", "Si está apagado, no se pide nada a GitHub ni a la lista (frame.sasaken1102s.net)",
+    "Cómo se usa · informar de un problema",
+    "Descarga e instala la versión nueva. Sal y vuelve a abrir la app para usarla",
+    "%s está instalada. Sal y vuelve a abrir la app para usarla",
+    "Si el script de WirePlumber también cambió, reinicia el visor (mira ~/.cache/frame-mic-tuner/update.log)",
+    "Página de la versión: ",
+    "Apps de apoyo", "Solo las apps que usa esta", "Cambia el silencio del micrófono con el botón aux",
+    "Apps de Frame de sasaken@", "%2$d de %1$d sin instalar", "Las %d están instaladas",
+    "Instalar", "En marcha", "Instalada", "En marcha en Konsole…", "La usa esta app",
+    "Al instalar se abre el instalador en Konsole. Sin sudo; todo va a la carpeta personal",
+    "Instalar, actualizar y quitar en el instalador de Konsole",
+    "Con la búsqueda activada, esta lista viene de frame.sasaken1102s.net (como mucho cada hora; si no, la última o la incluida)",
+    "Abrir el instalador",
+    "Instalar %s", "Abrir el instalador", "Konsole se abre y ejecuta este comando",
+    "Konsole muestra el avance (responde allí a las preguntas)",
+    "En el menú, elige por número las apps a instalar, actualizar o quitar",
+    "Sin sudo; todo va a la carpeta personal",
+    "Cierra Konsole al terminar; este panel también se actualiza",
+    "Cancelar", "Abrir en Konsole",
+    "Todavía hay una Konsole de esta app abierta", "No se pudo abrir Konsole: no hay pantalla (falta DISPLAY)",
+    "No se pudo abrir Konsole: Konsole no está instalado", "No se pudo abrir Konsole",
+    // 一番下の行
+    "Iniciar con SteamVR", "Salir", "Pulsar otra vez para salir",
+};
+
+const UiText kItalian = {
+    // Intestazione
+    "Microfono", "In uso", "Non in uso", "Silenziato", "Caricamento…", "Sconosciuto", "Silenzia", "Riattiva",
+    "App e aggiornamenti", "Impostazioni microfono",
+    // Uscita e microfono
+    "Uscita", "Microfono", "%d", "Altoparlanti Frame", "Altoparlante", "Microfono integrato Frame", "Integrato", "Microfono %s",
+    // Schede
+    "Rapido", "Regolazione fine",
+    // Rapido
+    "Quando ascolti da %s",
+    "Auricolari / cuffie", "Altoparlanti Frame",
+    "Passano anche i suoni bassi", "Tiene il suono degli altoparlanti fuori dal microfono",
+    "Cancellazione eco: no", "Cancellazione eco: sì", "Filtro rumore: no",
+    "%s usa sempre questa impostazione. Cambia da solo quando lo colleghi",
+    "Ora valgono le impostazioni della regolazione fine",
+    "%s collegato, quindi vale l'impostazione salvata", "Annulla",
+    // Regolazione fine
+    "Cancellazione eco", "Toglie il suono degli altoparlanti", "Filtro rumore", "Taglia anche i suoni bassi della bocca", "Attivo", "Spento",
+    "Severità", "Più basso fa passare di più", "Tenuta", "Suono tenuto dopo la voce", "Non ha effetto se spento", "Predefinito",
+    "Predefinito: 23% · 500 ms (SteamOS)",
+    // Microfono esterno
+    "Ora si usa %s",
+    "La cancellazione dell'eco e il filtro rumore valgono solo per il microfono integrato di Frame. Il suono di questo microfono arriva alle app così com'è.",
+    "L'impostazione per %1$s (%2$s) vale quando torni al microfono integrato", "Usa il microfono integrato",
+    // Riepilogo
+    "Eco attivo", "Eco spento", ", filtro rumore attivo", " · ",
+    // Percorso
+    "Percorso del segnale", "Microfono", "EQ", "Cancellazione eco", "Filtro rumore", "Alle app", "Non in uso, i filtri riposano",
+    "Percorso illeggibile",
+    // Voce
+    "Controllo voce", "Registra ciò che sentono le app e confronta", "Registra", "Stop", "Registrazione", "s", "%.1f s · %.1f s rimasti",
+    "Registra fino a 10 s con il microfono in uso", "Ancora nessuna registrazione", "Microfono %s (senza elaborazione)", "Impostazione sconosciuta",
+    // Nota
+    "Le modifiche valgono subito e si ricordano per uscita. Le registrazioni restano in memoria e spariscono all'uscita",
+    "L'avvio automatico non è installato (esegui ./install.sh)", "Stato dell'avvio automatico illeggibile",
+    // Errori
+    "Lettura non riuscita (wpctl)", "Il cambio microfono non è installato (esegui ./install.sh, poi riavvia)",
+    "Lettura del percorso non riuscita (pw-link)", "Cambio non riuscito (wpctl)", "Cambio dell'avvio automatico non riuscito (systemctl)",
+    "Impossibile registrare (PipeWire)", "Impossibile riprodurre (PipeWire)", "Impossibile cambiare il filtro rumore (pw-cli)",
+    "Cambio eco non riuscito (wpctl)", "Cambio del filtro rumore non riuscito (wpctl)",
+    "Impossibile riattivare (wpctl)", "Impossibile silenziare (wpctl)",
+    "Impossibile cambiare l'uscita (wpctl)", "Impossibile cambiare il microfono (wpctl)",
+    // Uscita
+    "Scegli l'uscita", "Ricorda le impostazioni del microfono Frame per ogni uscita e cambia al collegamento",
+    "Collegate", "Usate prima (ora non collegate)",
+    "In uso ora", "Collegata", "Ultimo uso %s", "Usata prima", "Impostazioni in vista",
+    "Riproduci qui", "Dimentica",
+    "Le uscite nuove partono dall'impostazione Altoparlante per gli altoparlanti Frame e da Auricolari per il resto. "
+    "\"Riproduci qui\" cambia la stessa uscita delle impostazioni audio di SteamVR. Scorri un elenco lungo con lo stick o trascinando",
+    // Microfono
+    "Microfono da usare", "La cancellazione dell'eco e il filtro rumore valgono solo per il microfono integrato di Frame",
+    "Si applicano eco e filtro rumore", "Nessuna elaborazione (dritto alle app)", "Usa questo microfono",
+    // App
+    "Questa app", "Cambia la cancellazione dell'eco e il filtro rumore del microfono",
+    "Controlla GitHub all'avvio e una volta al giorno", "Non controlla da sola. Usa \"Controlla ora\"",
+    "Cerca aggiornamenti", "Se spento, non si scarica nulla da GitHub né dall'elenco (frame.sasaken1102s.net)",
+    "Come si usa · segnala un problema",
+    "Scarica e installa la nuova versione. Esci e riavvia l'app per usarla",
+    "%s è installata. Esci e riavvia l'app per usarla",
+    "Se è cambiato anche lo script di WirePlumber, riavvia il visore (vedi ~/.cache/frame-mic-tuner/update.log)",
+    "Pagina della versione: ",
+    "App di supporto", "Solo le app che questa usa", "Cambia il muto del microfono con il tasto aux",
+    "App Frame di sasaken@", "%2$d di %1$d non installate", "Tutte le %d sono installate",
+    "Installa", "In esecuzione", "Installata", "In esecuzione in Konsole…", "Usata da questa app",
+    "L'installazione apre il programma in Konsole. Niente sudo; tutto va nella cartella home",
+    "Installa, aggiorna e rimuovi nel programma in Konsole",
+    "Con il controllo attivo, questo elenco arriva da frame.sasaken1102s.net (al massimo ogni ora; altrimenti l'ultimo o quello incluso)",
+    "Apri il programma di installazione",
+    "Installa %s", "Apri il programma di installazione", "Konsole si apre ed esegue questo comando",
+    "Konsole mostra l'avanzamento (rispondi lì alle domande)",
+    "Nel menu scegli per numero le app da installare, aggiornare o rimuovere",
+    "Niente sudo; tutto va nella cartella home",
+    "Chiudi Konsole quando ha finito; si aggiorna anche questo pannello",
+    "Annulla", "Apri in Konsole",
+    "Una Konsole per questa app è ancora aperta", "Impossibile aprire Konsole: nessuno schermo (DISPLAY assente)",
+    "Impossibile aprire Konsole: Konsole non è installato", "Impossibile aprire Konsole",
+    // 一番下の行
+    "Avvia con SteamVR", "Esci", "Premi di nuovo per uscire",
+};
+
 
 }  // namespace
 
 const UiText& uiText(Language language) {
-    if (language == Language::En) return kEnglish;
-    if (language == Language::Sc) return kSimplifiedChinese;
+    switch (language) {
+        case Language::En: return kEnglish;
+        case Language::Sc: return kSimplifiedChinese;
+        case Language::De: return kGerman;
+        case Language::Fr: return kFrench;
+        case Language::Es: return kSpanish;
+        case Language::It: return kItalian;
+        case Language::Ja: return kJapanese;
+    }
     return kJapanese;
 }
 
@@ -306,8 +649,15 @@ Language systemLanguage() {
 }
 
 const char* languageCode(Language language) {
-    if (language == Language::En) return "en";
-    if (language == Language::Sc) return "sc";
+    switch (language) {
+        case Language::En: return "en";
+        case Language::Sc: return "sc";
+        case Language::De: return "de";
+        case Language::Fr: return "fr";
+        case Language::Es: return "es";
+        case Language::It: return "it";
+        case Language::Ja: return "ja";
+    }
     return "ja";
 }
 
@@ -324,5 +674,34 @@ bool parseLanguage(const std::string& code, Language& language) {
         language = Language::Sc;
         return true;
     }
+    if (code == "de") {
+        language = Language::De;
+        return true;
+    }
+    if (code == "fr") {
+        language = Language::Fr;
+        return true;
+    }
+    if (code == "es") {
+        language = Language::Es;
+        return true;
+    }
+    if (code == "it") {
+        language = Language::It;
+        return true;
+    }
     return false;
+}
+
+const char* languageEndonym(Language language) {
+    switch (language) {
+        case Language::Ja: return "日本語";
+        case Language::En: return "English";
+        case Language::Sc: return "简体中文";
+        case Language::De: return "Deutsch";
+        case Language::Fr: return "Français";
+        case Language::Es: return "Español";
+        case Language::It: return "Italiano";
+    }
+    return "English";
 }
