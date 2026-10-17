@@ -18,6 +18,26 @@ pkg_check_modules(VULKAN REQUIRED IMPORTED_TARGET vulkan)
 # 声のチェックの録音・再生（pw_stream）
 pkg_check_modules(PIPEWIRE REQUIRED IMPORTED_TARGET libpipewire-0.3)
 
+# 言語のメニューの旗（assets/flags/*.png）を C++ の配列にして焼き込む。PNG を変えると設定し直す
+file(GLOB FLAG_PNGS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/assets/flags/*.png")
+list(SORT FLAG_PNGS)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${FLAG_PNGS})
+set(FLAG_ARRAYS "")
+set(FLAG_ROWS "")
+foreach(png IN LISTS FLAG_PNGS)
+  get_filename_component(flag_name "${png}" NAME_WE)
+  file(READ "${png}" flag_hex HEX)
+  string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," flag_bytes "${flag_hex}")
+  string(APPEND FLAG_ARRAYS "const unsigned char kFlag_${flag_name}[] = {${flag_bytes}};\n")
+  string(APPEND FLAG_ROWS "    {\"${flag_name}\", kFlag_${flag_name}, sizeof(kFlag_${flag_name})},\n")
+endforeach()
+list(LENGTH FLAG_PNGS FLAG_COUNT)
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/flag_icons_data.cpp.in"
+  "// CMakeLists.txt が assets/flags/*.png から作るファイル（手で書き換えない）\n"
+  "#include \"flag_icons.h\"\n\nnamespace {\n${FLAG_ARRAYS}}  // namespace\n\n"
+  "const FlagPng kFlagPngs[] = {\n${FLAG_ROWS}};\nconst std::size_t kFlagPngCount = ${FLAG_COUNT};\n")
+configure_file("${CMAKE_CURRENT_BINARY_DIR}/flag_icons_data.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/flag_icons_data.cpp" COPYONLY)
+
 add_executable(frame-mic-tuner
   src/main.cpp
   src/config.cpp
@@ -35,6 +55,8 @@ add_executable(frame-mic-tuner
   src/vk_texture.cpp
   src/draw.cpp
   src/i18n.cpp
+  src/flag_icons.cpp
+  "${CMAKE_CURRENT_BINARY_DIR}/flag_icons_data.cpp"
   vendor/frame-updater/cpp/update_check.cpp
   # 共通の UI 部品（色・寸法・切り替え・ボタン・カード・一番下の行）
   vendor/frame-ui/cpp/frame_ui.cpp
@@ -45,7 +67,7 @@ add_executable(frame-mic-tuner
   vendor/frame-apps/cpp/frame_apps_icons.cpp
   vendor/frame-apps/cpp/frame_apps_cairo.cpp
 )
-target_include_directories(frame-mic-tuner PRIVATE third_party/openvr vendor/frame-updater/cpp vendor/frame-ui/cpp
+target_include_directories(frame-mic-tuner PRIVATE src third_party/openvr vendor/frame-updater/cpp vendor/frame-ui/cpp
                            vendor/frame-apps/cpp)
 target_compile_options(frame-mic-tuner PRIVATE -Wall -Wextra)
 # Keep Release's normal speed optimization while dropping unused code/data and

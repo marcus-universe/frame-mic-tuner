@@ -287,6 +287,8 @@ public:
     void armQuitForPreview();
     /** 更新の確認（やめる・更新する）の状態にする。 */
     void armUpdateForPreview();
+    /** 言語の一覧を開いた状態にする。 */
+    void openLanguageMenuForPreview() { languageOpen_ = true; }
     /**
      * ポインターを置く。
      * @param x x

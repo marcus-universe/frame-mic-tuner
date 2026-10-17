@@ -185,6 +185,8 @@ scripts/package.sh   # 发布构建：dist/frame-mic-tuner-<version>.tar.gz、di
 
 更新机制（`vendor/frame-updater/`）、共用的界面部件（`vendor/frame-ui/`）和作者其他应用的列表（`vendor/frame-apps/`）是从私有的共用仓库复制来的。不要手动修改这些副本。各自的 `verify.sh`（由 `scripts/package.sh` 运行）会检查它们有没有被改过。
 
+Release 构建保留编译器的速度优化，并在支持时启用链接时优化（LTO）和删除未使用的代码与数据。构建后，`ctest --test-dir build --output-on-failure` 会在不需要 SteamVR 和音频硬件的情况下运行原有的 `--self-test` 和穷举所有组合的像素转换测试。`./build/rgba-test --benchmark` 还会把转换耗时和以前的算法做比较。测试不会放进发布包；配置时加上 `-DBUILD_TESTING=OFF` 就不会构建它们。
+
 ### 发布
 
 `scripts/package.sh` 会运行 `vendor/` 下三份副本的 `verify.sh`，以 Release 构建，并写出 `dist/frame-mic-tuner-<version>.tar.gz` 和 `dist/SHA256SUMS`（面板的 **更新** 要接受这个发布，这两样是必需的）。最后会打印一条命令，用来创建带这两个文件的 GitHub 发布（及其标签）。请先把发布说明写到仓库外面的文件里：
@@ -201,4 +203,4 @@ MIT。见 [LICENSE](LICENSE)。附带的 OpenVR 头文件（`third_party/openvr/
 
 ## 图标
 
-语言菜单使用 [Heroicons](https://github.com/tailwindlabs/heroicons)（Tailwind Labs，MIT）的 [language-16-solid](https://icon-sets.iconify.design/heroicons/language-16-solid/)，经由 [Iconify](https://icon-sets.iconify.design/)。
+语言菜单使用 [Heroicons](https://github.com/tailwindlabs/heroicons)（Tailwind Labs，MIT）的 [language-16-solid](https://icon-sets.iconify.design/heroicons/language-16-solid/)，经由 [Iconify](https://icon-sets.iconify.design/)。语言名称旁边的旗帜来自 HatScripts 的 [circle-flags](https://github.com/HatScripts/circle-flags)（MIT），同样经由 [Iconify](https://icon-sets.iconify.design/circle-flags/)。

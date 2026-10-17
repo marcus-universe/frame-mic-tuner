@@ -203,4 +203,4 @@ MIT。[LICENSE](LICENSE) を参照してください。同梱している OpenVR
 
 ## アイコン
 
-言語のメニューは [Heroicons](https://github.com/tailwindlabs/heroicons)（Tailwind Labs、MIT）の [language-16-solid](https://icon-sets.iconify.design/heroicons/language-16-solid/) を使っています（[Iconify](https://icon-sets.iconify.design/) 経由）。
+言語のメニューは [Heroicons](https://github.com/tailwindlabs/heroicons)（Tailwind Labs、MIT）の [language-16-solid](https://icon-sets.iconify.design/heroicons/language-16-solid/) を使っています（[Iconify](https://icon-sets.iconify.design/) 経由）。言語の名前の横の旗は HatScripts の [circle-flags](https://github.com/HatScripts/circle-flags)（MIT）です（これも [Iconify](https://icon-sets.iconify.design/circle-flags/) 経由）。

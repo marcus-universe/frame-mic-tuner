@@ -185,6 +185,8 @@ Opciones útiles que no necesitan SteamVR: `--print`, `--set-ns-vad N` / `--set-
 
 El mecanismo de actualización (`vendor/frame-updater/`), las partes de interfaz compartidas (`vendor/frame-ui/`) y la lista de las otras apps del autor (`vendor/frame-apps/`) son copias de repositorios compartidos y privados; no edites las copias a mano. Su `verify.sh` (lo ejecuta `scripts/package.sh`) comprueba que no se hayan cambiado.
 
+Las compilaciones Release mantienen la optimización de velocidad del compilador y activan, cuando es posible, la optimización en tiempo de enlace y la eliminación de código y datos sin usar. Después de compilar, `ctest --test-dir build --output-on-failure` ejecuta el `--self-test` de siempre y las pruebas exhaustivas de conversión de píxeles, sin SteamVR ni hardware de audio. `./build/rgba-test --benchmark` además compara el tiempo de conversión con el algoritmo anterior. Las pruebas no se incluyen en los paquetes de versión; configura con `-DBUILD_TESTING=OFF` para no compilarlas.
+
 ### Publicar
 
 `scripts/package.sh` ejecuta el `verify.sh` de las tres copias bajo `vendor/`, compila un binario Release y escribe `dist/frame-mic-tuner-<version>.tar.gz` y `dist/SHA256SUMS` (necesario para que el botón **Actualizar** del panel acepte la versión). Imprime el comando que crea la versión de GitHub (y su etiqueta) con los dos archivos adjuntos; escribe antes las notas de la versión en un archivo fuera del repositorio:
@@ -201,4 +203,4 @@ MIT. Ver [LICENSE](LICENSE). La cabecera OpenVR incluida (`third_party/openvr/`)
 
 ## Iconos
 
-El menú de idioma usa [language-16-solid](https://icon-sets.iconify.design/heroicons/language-16-solid/) de [Heroicons](https://github.com/tailwindlabs/heroicons) de Tailwind Labs, MIT, a través de [Iconify](https://icon-sets.iconify.design/).
+El menú de idioma usa [language-16-solid](https://icon-sets.iconify.design/heroicons/language-16-solid/) de [Heroicons](https://github.com/tailwindlabs/heroicons) de Tailwind Labs, MIT, a través de [Iconify](https://icon-sets.iconify.design/). Las banderas junto a los nombres de los idiomas son de [circle-flags](https://github.com/HatScripts/circle-flags) de HatScripts, MIT, también a través de [Iconify](https://icon-sets.iconify.design/circle-flags/).

@@ -185,6 +185,8 @@ Options utiles qui n'ont pas besoin de SteamVR : `--print`, `--set-ns-vad N` / `
 
 Le mécanisme de mise à jour (`vendor/frame-updater/`), les parties d'interface partagées (`vendor/frame-ui/`) et la liste des autres apps de l'auteur (`vendor/frame-apps/`) sont des copies de dépôts partagés et privés ; ne modifie pas les copies à la main. Leur `verify.sh` (lancé par `scripts/package.sh`) vérifie qu'elles n'ont pas été modifiées.
 
+Les builds Release gardent l'optimisation de vitesse du compilateur et activent, quand c'est possible, l'optimisation à l'édition de liens ainsi que la suppression du code et des données inutilisés. Après la compilation, `ctest --test-dir build --output-on-failure` lance le `--self-test` existant et les tests exhaustifs de conversion des pixels, sans SteamVR ni matériel audio. `./build/rgba-test --benchmark` compare aussi le temps de conversion avec l'ancien algorithme. Les tests ne sont pas inclus dans les paquets de version ; configure avec `-DBUILD_TESTING=OFF` pour ne pas les compiler.
+
 ### Publier
 
 `scripts/package.sh` lance le `verify.sh` des trois copies sous `vendor/`, compile un binaire Release, et écrit `dist/frame-mic-tuner-<version>.tar.gz` et `dist/SHA256SUMS` (nécessaire pour que le bouton **Mettre à jour** du panneau accepte la version). Il affiche la commande qui crée la version GitHub (et son tag) avec les deux fichiers joints ; écris les notes de version dans un fichier hors du dépôt d'abord :
@@ -201,4 +203,4 @@ MIT. Voir [LICENSE](LICENSE). L'en-tête OpenVR fourni (`third_party/openvr/`) e
 
 ## Icônes
 
-Le menu des langues utilise [language-16-solid](https://icon-sets.iconify.design/heroicons/language-16-solid/) de [Heroicons](https://github.com/tailwindlabs/heroicons) par Tailwind Labs, MIT, via [Iconify](https://icon-sets.iconify.design/).
+Le menu des langues utilise [language-16-solid](https://icon-sets.iconify.design/heroicons/language-16-solid/) de [Heroicons](https://github.com/tailwindlabs/heroicons) par Tailwind Labs, MIT, via [Iconify](https://icon-sets.iconify.design/). Les drapeaux à côté des noms des langues viennent de [circle-flags](https://github.com/HatScripts/circle-flags) par HatScripts, MIT, aussi via [Iconify](https://icon-sets.iconify.design/circle-flags/).

@@ -71,6 +71,7 @@ struct Options {
     int thumbnailSize = 256;       ///< --thumbnail-png で書き出す一辺（px）
     std::string language;          ///< 空でなければ PNG の書き出しで設定の言語の代わりに使う（ja / en）
     bool previewQuit = false;      ///< 「もう一度押すと終了」の状態で描く
+    bool previewLanguageMenu = false;  ///< 言語の一覧を開いた状態で描く
     std::vector<MicCommand> sets;  ///< --set-echo などの書き込み（--print の前に実行する）
     // 見た目の確認用のダミーの状態（どれか 1 つでも付けると、実際の値を読まずにダミーで描く）
     bool fake = false;
@@ -210,6 +211,7 @@ void printUsage() {
         "                        installed/checkfailed/installfailed）\n"
         "      --preview-update-confirm  「更新する」を確認の表示にする（--fake-update available と組み合わせる）\n"
         "      --preview-pressed earphone|speaker|record|mute|apps  押している間の見た目\n"
+        "      --preview-language-menu  言語の一覧（旗と言語の名前）を開いた見た目\n"
         "      --fake-ns-vad N / --fake-ns-grace N  ダミーのノイズ除去の強さ（既定 23 / 500）\n"
         "      --preview-drag-vad N / --preview-drag-grace N  そのバーを N までドラッグしている見た目\n"
         "      --fake-output speaker|earphones  今の音の出口（Frame のスピーカー / AB13X USB Audio）\n"
@@ -294,6 +296,8 @@ bool parseOptions(int argc, char** argv, Options& options) {
             }
         } else if (arg == "--preview-quit") {
             options.previewQuit = true;
+        } else if (arg == "--preview-language-menu") {
+            options.previewLanguageMenu = true;
         } else if (arg == "--tab" && hasNext) {
             options.tab = argv[++i];
             if (options.tab != "quick" && options.tab != "fine") {
@@ -1021,6 +1025,7 @@ int runDumpPng(const Options& options) {
             panel.setListScrollForPreview(options.previewScroll == "end" ? 1e9 : std::atof(options.previewScroll.c_str()));
         }
         if (options.previewQuit) panel.armQuitForPreview();
+        if (options.previewLanguageMenu) panel.openLanguageMenuForPreview();
         if (options.previewDrag != PanelAction::None) panel.setDragForPreview(options.previewDrag, options.previewDragValue);
         if (options.previewUpdateConfirm) panel.armUpdateForPreview();
         panel.render(config, model);

@@ -203,4 +203,4 @@ MIT. See [LICENSE](LICENSE). The bundled OpenVR header (`third_party/openvr/`) i
 
 ## Icons
 
-The language menu uses [language-16-solid](https://icon-sets.iconify.design/heroicons/language-16-solid/) from [Heroicons](https://github.com/tailwindlabs/heroicons) by Tailwind Labs, MIT, via [Iconify](https://icon-sets.iconify.design/).
+The language menu uses [language-16-solid](https://icon-sets.iconify.design/heroicons/language-16-solid/) from [Heroicons](https://github.com/tailwindlabs/heroicons) by Tailwind Labs, MIT, via [Iconify](https://icon-sets.iconify.design/). The flags next to the language names are from [circle-flags](https://github.com/HatScripts/circle-flags) by HatScripts, MIT, also via [Iconify](https://icon-sets.iconify.design/circle-flags/).

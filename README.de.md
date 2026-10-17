@@ -185,6 +185,8 @@ Nützliche Optionen, die kein SteamVR brauchen: `--print`, `--set-ns-vad N` / `-
 
 Der Update-Mechanismus (`vendor/frame-updater/`), die gemeinsamen UI-Teile (`vendor/frame-ui/`) und die Liste der anderen Apps des Autors (`vendor/frame-apps/`) sind Kopien aus gemeinsamen, privaten Repositories. Die Kopien nicht von Hand ändern. Deren `verify.sh` (ausgeführt von `scripts/package.sh`) prüft, dass sie nicht geändert wurden.
 
+Release-Builds behalten die Geschwindigkeitsoptimierung des Compilers und nutzen, wenn verfügbar, Link-Time-Optimierung sowie das Entfernen ungenutzten Codes und ungenutzter Daten. Nach dem Bauen führt `ctest --test-dir build --output-on-failure` den bisherigen `--self-test` und die vollständigen Tests der Pixelumwandlung aus, ohne SteamVR oder Audio-Hardware. `./build/rgba-test --benchmark` vergleicht außerdem die Umwandlungszeit mit dem vorherigen Verfahren. Tests sind nicht in den Release-Paketen. Mit `-DBUILD_TESTING=OFF` beim Konfigurieren werden sie nicht gebaut.
+
 ### Veröffentlichen
 
 `scripts/package.sh` führt das `verify.sh` der drei Kopien unter `vendor/` aus, baut ein Release-Binary und schreibt `dist/frame-mic-tuner-<version>.tar.gz` und `dist/SHA256SUMS` (nötig, damit der Knopf **Aktualisieren** im Panel das Release annimmt). Es gibt den Befehl aus, der das GitHub-Release (und dessen Tag) mit beiden Dateien anlegt. Die Release-Notizen vorher in eine Datei außerhalb des Repository schreiben:
@@ -201,4 +203,4 @@ MIT. Siehe [LICENSE](LICENSE). Der mitgelieferte OpenVR-Header (`third_party/ope
 
 ## Symbole
 
-Das Sprachmenü verwendet [language-16-solid](https://icon-sets.iconify.design/heroicons/language-16-solid/) aus [Heroicons](https://github.com/tailwindlabs/heroicons) von Tailwind Labs, MIT, über [Iconify](https://icon-sets.iconify.design/).
+Das Sprachmenü verwendet [language-16-solid](https://icon-sets.iconify.design/heroicons/language-16-solid/) aus [Heroicons](https://github.com/tailwindlabs/heroicons) von Tailwind Labs, MIT, über [Iconify](https://icon-sets.iconify.design/). Die Flaggen neben den Sprachnamen stammen aus [circle-flags](https://github.com/HatScripts/circle-flags) von HatScripts, MIT, ebenfalls über [Iconify](https://icon-sets.iconify.design/circle-flags/).

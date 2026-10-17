@@ -185,6 +185,8 @@ Opzioni utili che non hanno bisogno di SteamVR: `--print`, `--set-ns-vad N` / `-
 
 Il meccanismo di aggiornamento (`vendor/frame-updater/`), le parti di interfaccia condivise (`vendor/frame-ui/`) e l'elenco delle altre app dell'autore (`vendor/frame-apps/`) sono copie di repository condivisi e privati; non modificare le copie a mano. Il loro `verify.sh` (eseguito da `scripts/package.sh`) controlla che non siano state cambiate.
 
+Le build Release mantengono l'ottimizzazione di velocità del compilatore e attivano, quando possibile, l'ottimizzazione in fase di link e la rimozione di codice e dati inutilizzati. Dopo la compilazione, `ctest --test-dir build --output-on-failure` esegue il `--self-test` esistente e i test esaustivi della conversione dei pixel, senza SteamVR né hardware audio. `./build/rgba-test --benchmark` confronta anche il tempo di conversione con l'algoritmo precedente. I test non sono inclusi nei pacchetti di release; configura con `-DBUILD_TESTING=OFF` per non compilarli.
+
 ### Pubblicare
 
 `scripts/package.sh` esegue il `verify.sh` delle tre copie sotto `vendor/`, compila un binario Release e scrive `dist/frame-mic-tuner-<version>.tar.gz` e `dist/SHA256SUMS` (necessario perché il pulsante **Aggiorna** del pannello accetti la versione). Stampa il comando che crea la release di GitHub (e il suo tag) con entrambi i file allegati; scrivi prima le note di release in un file fuori dal repository:
@@ -201,4 +203,4 @@ MIT. Vedi [LICENSE](LICENSE). L'header OpenVR incluso (`third_party/openvr/`) è
 
 ## Icone
 
-Il menu delle lingue usa [language-16-solid](https://icon-sets.iconify.design/heroicons/language-16-solid/) di [Heroicons](https://github.com/tailwindlabs/heroicons) di Tailwind Labs, MIT, tramite [Iconify](https://icon-sets.iconify.design/).
+Il menu delle lingue usa [language-16-solid](https://icon-sets.iconify.design/heroicons/language-16-solid/) di [Heroicons](https://github.com/tailwindlabs/heroicons) di Tailwind Labs, MIT, tramite [Iconify](https://icon-sets.iconify.design/). Le bandiere accanto ai nomi delle lingue vengono da [circle-flags](https://github.com/HatScripts/circle-flags) di HatScripts, MIT, sempre tramite [Iconify](https://icon-sets.iconify.design/circle-flags/).

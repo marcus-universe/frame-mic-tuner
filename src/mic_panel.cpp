@@ -2,6 +2,7 @@
 #include "mic_panel.h"
 
 #include "draw.h"
+#include "flag_icons.h"
 #include "i18n.h"
 #include "outputs.h"
 #include "theme.h"
@@ -29,6 +30,7 @@ constexpr int kHeight = 788;
 constexpr Rect kChipRect {140, 28, 168, 44};
 constexpr Rect kMuteRect {324, 22, 220, 56};
 constexpr Rect kAppsRect {964, 22, 208, 56};
+constexpr double kFlagSize = 24;  ///< 言語のボタンとメニューの旗の一辺
 // ---- マイクの設定 ----
 constexpr Rect kOutputSelect {28, 92, 380, 60};   ///< 「音の出口」の欄
 constexpr Rect kMicSelect {420, 92, 184, 60};     ///< 「マイク」の欄
@@ -2194,9 +2196,10 @@ void MicPanel::drawFooter(const frame_ui::Canvas& ui, const UiText& t, const Con
     const Color dropFill = dropLook == 2 ? kControlDown : (dropLook == 1 || languageOpen_ ? kControlHover : kControl);
     fillRounded(cr, drop, 16, dropFill);
     strokeRounded(cr, drop, 16, languageOpen_ ? kAccent : kBorder, 2);
+    drawLanguageFlag(cr, config.language, drop.x + 14, drop.y + (drop.h - kFlagSize) / 2, kFlagSize);
     const std::string current = languageEndonym(config.language);
-    const double nameSize = ui.fit(current, 18, 13, drop.w - 46, true);
-    ui.text(drop.x + 16, frame_ui::centerBaseline(drop.y, drop.h, nameSize), current, nameSize, rgb(kText), true);
+    const double nameSize = ui.fit(current, 18, 13, drop.w - 46 - kFlagSize - 10, true);
+    ui.text(drop.x + 24 + kFlagSize, frame_ui::centerBaseline(drop.y, drop.h, nameSize), current, nameSize, rgb(kText), true);
     cairo_save(cr);
     setColor(cr, kTextMuted);
     cairo_set_line_width(cr, 2);
@@ -2279,9 +2282,11 @@ void MicPanel::drawLanguageMenu(const frame_ui::Canvas& ui, Language current) {
         } else if (hover > 0) {
             fillRounded(cr, row, 10, hover == 2 ? kControlDown : kControlHover);
         }
+        drawLanguageFlag(cr, language, row.x + 12, row.y + (row.h - kFlagSize) / 2, kFlagSize);
         const char* name = languageEndonym(language);
-        const double size = ui.fit(name, 18, 13, row.w - 44, true);
-        ui.text(row.x + 12, frame_ui::centerBaseline(row.y, row.h, size), name, size, rgb(selected ? kAccentText : kText), true);
+        const double size = ui.fit(name, 18, 13, row.w - 44 - kFlagSize - 10, true);
+        ui.text(row.x + 22 + kFlagSize, frame_ui::centerBaseline(row.y, row.h, size), name, size,
+                rgb(selected ? kAccentText : kText), true);
         if (selected) frame_ui::drawCheck(cr, row.right() - 16, row.y + row.h / 2, 14, frame_ui::kAccent);
         addButton({PanelAction::LanguagePick, static_cast<int>(language), languageCode(language)}, row);
     }
