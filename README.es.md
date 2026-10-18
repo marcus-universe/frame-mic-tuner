@@ -199,8 +199,4 @@ No lo hagas borrador ni versión preliminar: el panel mira la última versión d
 
 ## Licencia
 
-MIT. Ver [LICENSE](LICENSE). La cabecera OpenVR incluida (`third_party/openvr/`) es BSD-3-Clause de Valve Corporation. `vendor/frame-updater/`, `vendor/frame-ui/` y `vendor/frame-apps/` (incluidos los iconos de las otras apps integrados en el programa) son copias del propio código del autor y son MIT como el resto de este repositorio. Las licencias de la cabecera incluida y de las bibliotecas que usa están en [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). Los cambios están en [CHANGELOG.md](CHANGELOG.md).
-
-## Iconos
-
-El menú de idioma usa [language-16-solid](https://icon-sets.iconify.design/heroicons/language-16-solid/) de [Heroicons](https://github.com/tailwindlabs/heroicons) de Tailwind Labs, MIT, a través de [Iconify](https://icon-sets.iconify.design/). Las banderas junto a los nombres de los idiomas son de [circle-flags](https://github.com/HatScripts/circle-flags) de HatScripts, MIT, también a través de [Iconify](https://icon-sets.iconify.design/circle-flags/).
+MIT. Ver [LICENSE](LICENSE). La cabecera OpenVR incluida (`third_party/openvr/`) es BSD-3-Clause de Valve Corporation. El icono de idioma (`assets/heroicons-language-16-solid.svg`, también integrado en el programa) es de [Heroicons](https://github.com/tailwindlabs/heroicons) de Tailwind Labs, MIT. `vendor/frame-updater/`, `vendor/frame-ui/` y `vendor/frame-apps/` (incluidos los iconos de las otras apps integrados en el programa) son copias del propio código del autor y son MIT como el resto de este repositorio. Las licencias de la cabecera incluida y de las bibliotecas que usa están en [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). Los cambios están en [CHANGELOG.md](CHANGELOG.md).

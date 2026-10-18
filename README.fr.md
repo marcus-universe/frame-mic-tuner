@@ -199,8 +199,4 @@ N'en fais pas un brouillon ni une préversion : le panneau regarde la dernière 
 
 ## Licence
 
-MIT. Voir [LICENSE](LICENSE). L'en-tête OpenVR fourni (`third_party/openvr/`) est BSD-3-Clause de Valve Corporation. `vendor/frame-updater/`, `vendor/frame-ui/` et `vendor/frame-apps/` (y compris les icônes des autres apps intégrées au programme) sont des copies du propre code de l'auteur et sont MIT comme le reste de ce dépôt. Les licences de l'en-tête fourni et des bibliothèques qu'il utilise sont listées dans [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). Les changements sont listés dans [CHANGELOG.md](CHANGELOG.md).
-
-## Icônes
-
-Le menu des langues utilise [language-16-solid](https://icon-sets.iconify.design/heroicons/language-16-solid/) de [Heroicons](https://github.com/tailwindlabs/heroicons) par Tailwind Labs, MIT, via [Iconify](https://icon-sets.iconify.design/). Les drapeaux à côté des noms des langues viennent de [circle-flags](https://github.com/HatScripts/circle-flags) par HatScripts, MIT, aussi via [Iconify](https://icon-sets.iconify.design/circle-flags/).
+MIT. Voir [LICENSE](LICENSE). L'en-tête OpenVR fourni (`third_party/openvr/`) est BSD-3-Clause de Valve Corporation. L'icône des langues (`assets/heroicons-language-16-solid.svg`, aussi intégrée au programme) vient de [Heroicons](https://github.com/tailwindlabs/heroicons) par Tailwind Labs, MIT. `vendor/frame-updater/`, `vendor/frame-ui/` et `vendor/frame-apps/` (y compris les icônes des autres apps intégrées au programme) sont des copies du propre code de l'auteur et sont MIT comme le reste de ce dépôt. Les licences de l'en-tête fourni et des bibliothèques qu'il utilise sont listées dans [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). Les changements sont listés dans [CHANGELOG.md](CHANGELOG.md).

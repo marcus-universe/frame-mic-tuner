@@ -199,8 +199,4 @@ gh release create v<version> dist/frame-mic-tuner-<version>.tar.gz dist/SHA256SU
 
 ## 许可证
 
-MIT。见 [LICENSE](LICENSE)。附带的 OpenVR 头文件（`third_party/openvr/`）是 Valve Corporation 的 BSD-3-Clause。`vendor/frame-updater/`、`vendor/frame-ui/` 和 `vendor/frame-apps/`（包括编进程序的其他应用图标）是作者自己代码的副本，与本仓库其余部分一样是 MIT。附带的头文件及其使用的库的许可证列在 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)。变更记录在 [CHANGELOG.md](CHANGELOG.md)。
-
-## 图标
-
-语言菜单使用 [Heroicons](https://github.com/tailwindlabs/heroicons)（Tailwind Labs，MIT）的 [language-16-solid](https://icon-sets.iconify.design/heroicons/language-16-solid/)，经由 [Iconify](https://icon-sets.iconify.design/)。语言名称旁边的旗帜来自 HatScripts 的 [circle-flags](https://github.com/HatScripts/circle-flags)（MIT），同样经由 [Iconify](https://icon-sets.iconify.design/circle-flags/)。
+MIT。见 [LICENSE](LICENSE)。附带的 OpenVR 头文件（`third_party/openvr/`）是 Valve Corporation 的 BSD-3-Clause。语言菜单的图标（`assets/heroicons-language-16-solid.svg`，也编进了程序）来自 Tailwind Labs 的 [Heroicons](https://github.com/tailwindlabs/heroicons)，MIT。`vendor/frame-updater/`、`vendor/frame-ui/` 和 `vendor/frame-apps/`（包括编进程序的其他应用图标）是作者自己代码的副本，与本仓库其余部分一样是 MIT。附带的头文件及其使用的库的许可证列在 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)。变更记录在 [CHANGELOG.md](CHANGELOG.md)。

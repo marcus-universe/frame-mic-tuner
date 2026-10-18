@@ -199,8 +199,4 @@ gh release create v<バージョン> dist/frame-mic-tuner-<バージョン>.tar.
 
 ## ライセンス
 
-MIT。[LICENSE](LICENSE) を参照してください。同梱している OpenVR のヘッダー（`third_party/openvr/`）は Valve Corporation による BSD-3-Clause です。`vendor/frame-updater/`・`vendor/frame-ui/`・`vendor/frame-apps/`（プログラムに焼き込むほかのアプリのアイコンを含む）は作者自身のコードのコピーで、このリポジトリのほかの部分と同じ MIT です。同梱物と使っているライブラリのライセンスは [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) に、変更履歴は [CHANGELOG.md](CHANGELOG.md) にあります。
-
-## アイコン
-
-言語のメニューは [Heroicons](https://github.com/tailwindlabs/heroicons)（Tailwind Labs、MIT）の [language-16-solid](https://icon-sets.iconify.design/heroicons/language-16-solid/) を使っています（[Iconify](https://icon-sets.iconify.design/) 経由）。言語の名前の横の旗は HatScripts の [circle-flags](https://github.com/HatScripts/circle-flags)（MIT）です（これも [Iconify](https://icon-sets.iconify.design/circle-flags/) 経由）。
+MIT。[LICENSE](LICENSE) を参照してください。同梱している OpenVR のヘッダー（`third_party/openvr/`）は Valve Corporation による BSD-3-Clause です。言語のメニューの絵（`assets/heroicons-language-16-solid.svg`。プログラムにも焼き込んでいます）は Tailwind Labs による [Heroicons](https://github.com/tailwindlabs/heroicons) で、MIT です。`vendor/frame-updater/`・`vendor/frame-ui/`・`vendor/frame-apps/`（プログラムに焼き込むほかのアプリのアイコンを含む）は作者自身のコードのコピーで、このリポジトリのほかの部分と同じ MIT です。同梱物と使っているライブラリのライセンスは [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) に、変更履歴は [CHANGELOG.md](CHANGELOG.md) にあります。
