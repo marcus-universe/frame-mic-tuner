@@ -647,8 +647,8 @@ bool closesLine(const std::string& token) {
 }
 
 /**
- * 幅に収まるよう行に分ける（英語は語の切れ目、日本語・中国語は文字ごと。句読点は行頭に来ないようにする）。
- * 入りきらない分は最後の行の末尾を「…」にする。
+ * 幅に収まるよう行に分ける（英語・ドイツ語・フランス語・スペイン語・イタリア語は語の切れ目、日本語・中国語は文字ごと。
+ * 句読点は行頭に来ないようにする）。入りきらない分は最後の行の末尾を「…」にする。
  * @param ui 描く先（文字を測る）
  * @param text 文字列
  * @param size 大きさ
@@ -659,15 +659,23 @@ bool closesLine(const std::string& token) {
  */
 std::vector<std::string> wrapText(const frame_ui::Canvas& ui, const std::string& text, double size, bool bold,
                                   double width, int maxLines) {
-    // 区切り: 英数字の続き（後ろの空白ごと）か、それ以外の 1 文字
+    // 区切り: 語の続き（後ろの空白ごと）か、それ以外の 1 文字。
+    // 語の字は、空白以外の ASCII と、アクセント付きのラテン文字（U+00C0〜U+024F。UTF-8 の先頭のバイトが 0xC3〜0xC9）。
+    // 「d'écho」「più」のような語を途中で切らない。日本語・中国語の字や「·」「«」は今までどおり 1 文字ずつ
+    const auto inWord = [&text](size_t at) {
+        const unsigned char c = static_cast<unsigned char>(text[at]);
+        return (c < 0x80 && c != ' ') || (c >= 0xC3 && c <= 0xC9);
+    };
+    const auto charEnd = [&text](size_t at) {
+        size_t end = at + 1;
+        while (end < text.size() && (static_cast<unsigned char>(text[end]) & 0xC0) == 0x80) ++end;
+        return end;
+    };
     std::vector<std::string> tokens;
     for (size_t i = 0; i < text.size();) {
-        const unsigned char c = static_cast<unsigned char>(text[i]);
-        size_t end = i + 1;
-        if (c < 0x80 && c != ' ') {
-            while (end < text.size() && static_cast<unsigned char>(text[end]) < 0x80 && text[end] != ' ') ++end;
-        } else if (c >= 0x80) {
-            while (end < text.size() && (static_cast<unsigned char>(text[end]) & 0xC0) == 0x80) ++end;
+        size_t end = charEnd(i);
+        if (inWord(i)) {
+            while (end < text.size() && inWord(end)) end = charEnd(end);
         }
         while (end < text.size() && text[end] == ' ') ++end;  // 後ろの空白はその語に付ける
         tokens.push_back(text.substr(i, end - i));
@@ -698,6 +706,34 @@ std::vector<std::string> wrapText(const frame_ui::Canvas& ui, const std::string&
     }
     for (std::string& l : lines) l = ui.ellipsize(l, size, width, bold);
     return lines;
+}
+
+/**
+ * 短い見出し・説明を空白のところで 2 行に分ける。長いほうの行がいちばん短くなるところで分ける（「Vérifier les / mises à jour」。
+ * 前から詰める wrapText だと「Vérifier les mises à / jour」になる）。1 行に入れば 1 行のまま。
+ * どこで分けても入らなければ wrapText と同じ（入りきらない分は「…」）。
+ * @param ui 描く先（文字を測る）
+ * @param text 文字列
+ * @param size 大きさ
+ * @param bold 太字か
+ * @param width 幅
+ * @return 行（1 か 2 行）
+ */
+std::vector<std::string> wrapBalanced(const frame_ui::Canvas& ui, const std::string& text, double size, bool bold,
+                                      double width) {
+    if (ui.measure(text, size, bold) <= width) return {text};
+    std::vector<std::string> best;
+    double bestW = 0.0;
+    for (size_t at = text.find(' '); at != std::string::npos; at = text.find(' ', at + 1)) {
+        const std::string first = text.substr(0, at);
+        const std::string second = text.substr(at + 1);
+        const double w = std::max(ui.measure(first, size, bold), ui.measure(second, size, bold));
+        if (w <= width && (best.empty() || w < bestW)) {
+            best = {first, second};
+            bestW = w;
+        }
+    }
+    return best.empty() ? wrapText(ui, text, size, bold, width, 2) : best;
 }
 
 /**
@@ -1281,7 +1317,14 @@ void MicPanel::drawHeader(const frame_ui::Canvas& ui, const UiText& t, const Pan
 
     // 右: 「アプリと更新」（新しい版があるときはピンクの点）/ アプリと更新の画面では「← マイクの設定へ」
     const bool apps = view_ == PanelView::Apps;
-    const Rect appsHit = frame_ui::drawButton(ui, kAppsRect, "", frame_ui::ButtonKind::Normal);
+    const std::string text = apps ? t.backToSettings : t.appsButton;
+    const double iconW = apps ? 18 : 20;
+    // 幅 208 では 16px に入らない言語（スペイン語・イタリア語など）は、16px で入る幅まで左へ広げる。
+    // 点の分も見込んで、点が付いたり消えたりしても幅は変わらない。入る言語は今までと同じ 964, 22, 208×56
+    const double need = 32 + iconW + 8 + ui.measure(text, 16, true) + 10 + 8;
+    const double appsW = std::min(std::max(kAppsRect.w, need), kAppsRect.right() - (muteRect.right() + 16));
+    const Rect appsRect {kAppsRect.right() - appsW, kAppsRect.y, appsW, kAppsRect.h};
+    const Rect appsHit = frame_ui::drawButton(ui, appsRect, "", frame_ui::ButtonKind::Normal);
     {
         using frame_updater::UpdateState;
         // ピンクの点: 新しい版がある（入れ終わり・失敗も）か、このアプリで使うアプリが入っていない
@@ -1290,19 +1333,17 @@ void MicPanel::drawHeader(const frame_ui::Canvas& ui, const UiText& t, const Pan
         for (const frame_apps::Entry& e : model.apps) relatedMissing |= e.related && e.state == frame_apps::AppState::Missing;
         const bool attention = !apps && (s == UpdateState::Available || s == UpdateState::Installed ||
                                          s == UpdateState::InstallFailed || relatedMissing);
-        const std::string text = apps ? t.backToSettings : t.appsButton;
-        const double iconW = apps ? 18 : 20;
         const double dotW = attention ? 10 + 8 : 0;
-        const double textSize = ui.fit(text, frame_ui::kControlSize, 13, kAppsRect.w - 32 - iconW - 8 - dotW, true);
+        const double textSize = ui.fit(text, frame_ui::kControlSize, 13, appsRect.w - 32 - iconW - 8 - dotW, true);
         const double w = iconW + 8 + ui.measure(text, textSize, true) + dotW;
-        const double x = kAppsRect.x + (kAppsRect.w - w) / 2;
-        const double acy = kAppsRect.y + kAppsRect.h / 2;
+        const double x = appsRect.x + (appsRect.w - w) / 2;
+        const double acy = appsRect.y + appsRect.h / 2;
         if (apps) {
             drawPolyline(cr, x, acy - 9, 18, 18, kText, 2.4, {11, 3, 5, 9, 11, 15});
         } else {
             drawGridIcon(cr, x, acy - 10, 20, kText);
         }
-        const double textEnd = x + iconW + 8 + ui.text(x + iconW + 8, frame_ui::centerBaseline(kAppsRect.y, kAppsRect.h, textSize),
+        const double textEnd = x + iconW + 8 + ui.text(x + iconW + 8, frame_ui::centerBaseline(appsRect.y, appsRect.h, textSize),
                                                        text, textSize, rgb(kText), true);
         if (attention) fillCircle(cr, textEnd + 8 + 5, acy, 5, kAccent);
     }
@@ -1456,21 +1497,28 @@ void MicPanel::drawQuick(const frame_ui::Canvas& ui, const UiText& t, const Conf
                     rgb(selected ? kAccentText : kText), true);
         }
 
-        // 真ん中: 名前（選択中は前に ✓ の丸）と、何のためか
+        // 真ん中: 名前（選択中は前に ✓ の丸）と、何のためか。
+        // 何のためかが 15px の 1 行に入らない言語（フランス語・スペイン語・イタリア語）は、長さをそろえた 14px の 2 行にして、名前を 8px 上げる
         double tx = r.x + 80;
         const double textRight = tagX - 14;
+        const std::string effect = i == 0 ? t.earphoneHint : t.speakerHint;
+        const double effectW = textRight - r.x - 80;
+        const bool effectWraps = ui.measure(effect, 15) > effectW;
+        const double titleBaseline = effectWraps ? cy - 14 : cy - 6;
         if (selected) {
-            fillCircle(cr, tx + 11, cy - 13, 11, kOnAccent);
-            frame_ui::drawCheck(cr, tx + 11, cy - 13, 14, frame_ui::kAccent);
+            fillCircle(cr, tx + 11, titleBaseline - 7, 11, kOnAccent);
+            frame_ui::drawCheck(cr, tx + 11, titleBaseline - 7, 14, frame_ui::kAccent);
             tx += 30;
         }
         const std::string title = i == 0 ? t.earphoneCard : t.speakerCard;
         const double titleSize = ui.fit(title, 22, 16, textRight - tx, true);
-        ui.text(tx, cy - 6, ui.ellipsize(title, titleSize, textRight - tx, true), titleSize, rgb(fg), true);
-        const std::string effect = i == 0 ? t.earphoneHint : t.speakerHint;
-        const double effectSize = ui.fit(effect, 15, 12, textRight - r.x - 80);
-        ui.text(r.x + 80, cy + 23, ui.ellipsize(effect, effectSize, textRight - r.x - 80), effectSize,
-                rgb(selected ? kOnAccentSoft : kTextMuted));
+        ui.text(tx, titleBaseline, ui.ellipsize(title, titleSize, textRight - tx, true), titleSize, rgb(fg), true);
+        const Color effectColor = selected ? kOnAccentSoft : kTextMuted;
+        if (effectWraps) {
+            drawLines(ui, r.x + 80, cy + 13, 18, wrapBalanced(ui, effect, 14, false, effectW), 14, effectColor);
+        } else {
+            ui.text(r.x + 80, cy + 23, effect, 15, rgb(effectColor));
+        }
         addButton({i == 0 ? PanelAction::Earphone : PanelAction::Speaker}, r);
     }
 
@@ -1500,8 +1548,15 @@ void MicPanel::drawFine(const frame_ui::Canvas& ui, const UiText& t, const Panel
         const double top = 262 + row * 68;
         const bool isEcho = row == 0;
         const std::string title = isEcho ? t.rowEcho : t.rowNs;
-        const double size = ui.fit(title, frame_ui::kLabelSize, 15, 196 - kInnerX - 8, true);
-        ui.text(kInnerX, frame_ui::centerBaseline(top, 56, size), title, size, rgb(kText), true);
+        // 17px の 1 行に入らない見出し（フランス語・スペイン語・イタリア語のエコー除去）は、長さをそろえた 17px の 2 行にする
+        const double titleRoom = 196 - kInnerX - 8;
+        const double size = ui.fit(title, frame_ui::kLabelSize, 17, titleRoom, true);
+        if (ui.measure(title, size, true) <= titleRoom) {
+            ui.text(kInnerX, frame_ui::centerBaseline(top, 56, size), title, size, rgb(kText), true);
+        } else {
+            const std::vector<std::string> lines = wrapBalanced(ui, title, 17, true, titleRoom);
+            drawLines(ui, kInnerX, frame_ui::centerBaseline(top, 56, 17) - 10, 20, lines, 17, kText, true);
+        }
         const bool value = isEcho ? echo : ns;
         const std::vector<Rect> hits =
             frame_ui::drawSegmented(ui, {196, top, 210, 56}, {t.on, t.off}, known ? (value ? 0 : 1) : -1);
@@ -1529,8 +1584,13 @@ void MicPanel::drawFine(const frame_ui::Canvas& ui, const UiText& t, const Panel
         const double titleSize = ui.fit(title, 17, 13, 130, true);
         ui.text(kInnerX, top + 21, title, titleSize, rgb(kText), true);
         const std::string hint = (!ns && isVad) ? t.nsInactive : (isVad ? t.nsVadHint : t.nsGraceHint);
-        const double hintSize = ui.fit(hint, 12, 10, 130);
-        ui.text(kInnerX, top + 40, ui.ellipsize(hint, hintSize, 130), hintSize, rgb(kTextMuted));
+        // 説明は 12px（入らなければ 11px まで縮める）の 1 行。11px でも入らない言語は 11px の 2 行にする（下の行・標準の説明とは離れる）
+        const double hintSize = ui.fit(hint, 12, 11, 130);
+        if (ui.measure(hint, hintSize) <= 130) {
+            ui.text(kInnerX, top + 40, hint, hintSize, rgb(kTextMuted));
+        } else {
+            drawLines(ui, kInnerX, top + 37, 13, wrapText(ui, hint, 11, false, 130, 2), 11, kTextMuted);
+        }
 
         // 溝・今の値までの塗り・つまみ
         fillRounded(cr, {trackX0, cy - 3, trackX1 - trackX0, 6}, 3, kDivider);
@@ -1959,8 +2019,15 @@ void MicPanel::drawApps(const frame_ui::Canvas& ui, const UiText& t, const Confi
     drawUpdateBox(ui, t, lang, config, model.update, kUpdateBox);
 
     // 新しい版の確認（オン / オフ。オフならアプリの一覧も取りに行かない）
-    const double labelSize = ui.fit(t.rowUpdateCheck, 18, 13, 216 - x - 10, true);
-    ui.text(x, frame_ui::centerBaseline(380, 56, labelSize), t.rowUpdateCheck, labelSize, rgb(kText), true);
+    // 見出しは 16px まで縮めて 1 行。それでも入らない言語（ドイツ語・フランス語・スペイン語・イタリア語）は、長さをそろえた 16px の 2 行
+    const double labelRoom = 216 - x - 10;
+    const double labelSize = ui.fit(t.rowUpdateCheck, 18, 16, labelRoom, true);
+    if (ui.measure(t.rowUpdateCheck, labelSize, true) <= labelRoom) {
+        ui.text(x, frame_ui::centerBaseline(380, 56, labelSize), t.rowUpdateCheck, labelSize, rgb(kText), true);
+    } else {
+        const std::vector<std::string> lines = wrapBalanced(ui, t.rowUpdateCheck, 16, true, labelRoom);
+        drawLines(ui, x, frame_ui::centerBaseline(380, 56, 16) - 9.5, 19, lines, 16, kText, true);
+    }
     const std::vector<Rect> toggle = frame_ui::drawSegmented(ui, {216, 380, 180, 56}, {t.on, t.off}, config.updateCheck ? 0 : 1);
     addButton({PanelAction::UpdateCheckOn}, toggle[0]);
     addButton({PanelAction::UpdateCheckOff}, toggle[1]);
