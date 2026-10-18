@@ -17,7 +17,7 @@ inline constexpr Language kLanguages[] = {Language::Ja, Language::En, Language::
 /**
  * Frame のシステム言語（設定ファイルに language が無いときの既定値）。
  * Steam の言語設定（~/.steam/registry.vdf の "language"、読むだけ）を見る。
- * japanese / schinese / german / french / spanish / italian。それ以外の Steam の言語は英語。
+ * japanese / schinese / german / french / spanish・latam（中南米のスペイン語）/ italian。それ以外の Steam の言語は英語。
  * Steam の設定が読めなければ LC_ALL / LC_MESSAGES / LANG の接頭辞 ja / zh_CN / de / fr / es / it を見て、どれでもなければ英語。
  * 結果は最初の 1 回だけ調べて覚えておく。
  * @return 言語

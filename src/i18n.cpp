@@ -52,7 +52,7 @@ Language detectSystemLanguage() {
         if (steam == "schinese" || steam == "chinese") return Language::Sc;
         if (steam == "german") return Language::De;
         if (steam == "french") return Language::Fr;
-        if (steam == "spanish") return Language::Es;
+        if (steam == "spanish" || steam == "latam") return Language::Es;  // latam = スペイン語（中南米）
         if (steam == "italian") return Language::It;
         return Language::En;
     }

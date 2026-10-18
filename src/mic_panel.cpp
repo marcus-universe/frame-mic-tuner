@@ -11,6 +11,7 @@
 #include <cairo.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -1147,6 +1148,7 @@ void MicPanel::resetView() {
     listPress_ = {};
     updateArmed_ = false;
     quitArmed_ = false;
+    languageOpen_ = false;
     launchResult_ = frame_apps::LaunchResult::Started;
 }
 
