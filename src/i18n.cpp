@@ -318,22 +318,22 @@ const UiText kGerman = {
     "Beim Hören über %s",
     "Ohrhörer / Kopfhörer", "Frame-Lautsprecher",
     "Leise Töne kommen durch", "Hält Lautsprecherklang vom Mikrofon fern",
-    "Echounterdrückung aus", "Echounterdrückung an", "Rauschfilter aus",
+    "Echofilter aus", "Echofilter an", "Rauschfilter aus",
     "%s benutzt immer diese Einstellung. Sie wechselt automatisch, wenn du es anschließt",
     "Gerade gelten die Einstellungen der Feinjustierung",
     "%s angeschlossen, also gilt die gespeicherte Einstellung", "Rückgängig",
     // Feinjustierung
-    "Echounterdrückung", "Entfernt Lautsprecherklang", "Rauschfilter", "Schneidet auch leise Mundgeräusche", "Ein", "Aus",
+    "Echofilter", "Entfernt Lautsprecherklang", "Rauschfilter", "Schneidet auch leise Mundgeräusche", "Ein", "Aus",
     "Strenge", "Niedriger lässt mehr durch", "Nachklang", "Ton nach dem Sprechen", "Wirkt nicht, solange aus", "Standard",
     "Standard: 23 % · 500 ms (SteamOS)",
     // Externes Mikrofon
     "Gerade wird %s benutzt",
-    "Echounterdrückung und Rauschfilter gelten nur für das eingebaute Frame-Mikrofon. Der Ton dieses Mikrofons geht unverändert an Apps.",
+    "Echofilter und Rauschfilter gelten nur für das eingebaute Frame-Mikrofon. Der Ton dieses Mikrofons geht unverändert an Apps.",
     "Die Einstellung für %1$s (%2$s) gilt, wenn du zum eingebauten Mikrofon zurückwechselst", "Eingebautes Mikrofon benutzen",
     // Zusammenfassung
-    "Echounterdrückung an", "Echounterdrückung aus", ", Rauschfilter an", " · ",
+    "Echofilter an", "Echofilter aus", ", Rauschfilter an", " · ",
     // Signalweg
-    "Signalweg", "Mikrofon", "EQ", "Echounterdrückung", "Rauschfilter", "Zu Apps", "Nicht in Gebrauch, Filter ruhen",
+    "Signalweg", "Mikrofon", "EQ", "Echofilter", "Rauschfilter", "Zu Apps", "Nicht in Gebrauch, Filter ruhen",
     "Signalweg nicht lesbar",
     // Stimmtest
     "Stimmtest", "Nimm auf, was Apps hören, und vergleiche", "Aufnehmen", "Stopp", "Aufnahme", "s", "%.1f s · noch %.1f s",
@@ -345,7 +345,7 @@ const UiText kGerman = {
     "Lesen fehlgeschlagen (wpctl)", "Mikrofon-Umschaltung ist nicht installiert (./install.sh, dann neu starten)",
     "Signalweg nicht lesbar (pw-link)", "Umschalten fehlgeschlagen (wpctl)", "Autostart-Änderung fehlgeschlagen (systemctl)",
     "Aufnahme startet nicht (PipeWire)", "Wiedergabe nicht möglich (PipeWire)", "Rauschfilter nicht änderbar (pw-cli)",
-    "Echounterdrückung fehlgeschlagen (wpctl)", "Rauschfilter-Umschaltung fehlgeschlagen (wpctl)",
+    "Echofilter-Umschaltung fehlgeschlagen (wpctl)", "Rauschfilter-Umschaltung fehlgeschlagen (wpctl)",
     "Stummschaltung nicht aufgehoben (wpctl)", "Stummschalten fehlgeschlagen (wpctl)",
     "Ausgang nicht gewechselt (wpctl)", "Mikrofon nicht gewechselt (wpctl)",
     // Ausgang wählen
@@ -356,10 +356,10 @@ const UiText kGerman = {
     "Neue Ausgänge starten bei den Frame-Lautsprechern mit der Lautsprecher-Einstellung und sonst mit Ohrhörer. "
     "\"Hier wiedergeben\" wechselt denselben Ausgang wie die Audioeinstellung von SteamVR. Lange Listen mit dem Stick oder durch Ziehen scrollen",
     // Mikrofon
-    "Mikrofon wählen", "Echounterdrückung und Rauschfilter gelten nur für das eingebaute Frame-Mikrofon",
-    "Echounterdrückung und Rauschfilter sind aktiv", "Keine Verarbeitung (direkt zu Apps)", "Dieses Mikrofon benutzen",
+    "Mikrofon wählen", "Echofilter und Rauschfilter gelten nur für das eingebaute Frame-Mikrofon",
+    "Echofilter und Rauschfilter sind aktiv", "Keine Verarbeitung (direkt zu Apps)", "Dieses Mikrofon benutzen",
     // Apps
-    "Diese App", "Schaltet Echounterdrückung und Rauschfilter des Mikrofons um",
+    "Diese App", "Schaltet Echofilter und Rauschfilter des Mikrofons um",
     "Prüft beim Start und einmal am Tag auf GitHub nach einer neuen Version", "Prüft nicht von selbst. „Jetzt prüfen“ benutzen",
     "Nach Updates suchen", "Wenn aus, wird nichts von GitHub oder der App-Liste (frame.sasaken1102s.net) geholt",
     "Anleitung · Problem melden",
@@ -484,7 +484,8 @@ const UiText kSpanish = {
     "Ahora se usan los ajustes finos",
     "%s conectado, así que vale su ajuste guardado", "Deshacer",
     // Ajuste fino
-    "Cancelación de eco", "Quita el sonido del altavoz", "Filtro de ruido", "También corta sonidos bajos de la boca", "Activado", "Apagado",
+    // オン・オフは幅 180 の切り替え（新しい版の確認・SteamVR と一緒に起動）にも入るので短く（札の「: sí / no」と同じ）
+    "Cancelación de eco", "Quita el sonido del altavoz", "Filtro de ruido", "También corta sonidos bajos de la boca", "Sí", "No",
     "Sensibilidad", "Más bajo deja pasar más", "Retención", "Sonido tras hablar", "No hace nada mientras está apagado", "Predeterminado",
     "Predeterminado: 23 % · 500 ms (SteamOS)",
     // Micrófono externo
@@ -564,7 +565,8 @@ const UiText kItalian = {
     "Ora valgono le impostazioni della regolazione fine",
     "%s collegato, quindi vale l'impostazione salvata", "Annulla",
     // Regolazione fine
-    "Cancellazione eco", "Toglie il suono degli altoparlanti", "Filtro rumore", "Taglia anche i suoni bassi della bocca", "Attivo", "Spento",
+    // オン・オフは幅 180 の切り替え（新しい版の確認・SteamVR と一緒に起動）にも入るので短く（札の「: sì / no」と同じ）
+    "Cancellazione eco", "Toglie il suono degli altoparlanti", "Filtro rumore", "Taglia anche i suoni bassi della bocca", "Sì", "No",
     "Severità", "Più basso fa passare di più", "Tenuta", "Suono tenuto dopo la voce", "Non ha effetto se spento", "Predefinito",
     "Predefinito: 23% · 500 ms (SteamOS)",
     // Microfono esterno

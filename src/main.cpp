@@ -1420,16 +1420,23 @@ int runSelfTest() {
         Config config;
         PanelModel model = loadedModel(false);
         bool same = true;
+        bool fits = true;
         for (const Language language : kLanguages) {
             config.language = language;
+            // 見出しが入らない言語（スペイン語・イタリア語）は右へずれるので、x 324 は日本語・英語・簡体字中国語で確かめる
+            const bool fixed = language == Language::Ja || language == Language::En || language == Language::Sc;
+            double firstX = -1.0;
             for (const bool muted : {false, true}) {
                 model.state.muted = muted;
                 panel.render(config, model);
                 const frame_ui::Rect r = panel.buttonRect(PanelAction::MuteToggle);
-                same = same && r.x == 324 && r.y == 22 && r.w == 220 && r.h == 56;
+                if (firstX < 0) firstX = r.x;
+                same = same && (fixed ? r.x == 324 : r.x >= 324) && r.x == firstX && r.y == 22 && r.w == 220 && r.h == 56;
+                fits = fits && r.right() <= 964 - 12;  // 右の「アプリと更新」（x 964）に届かない
             }
         }
-        expect("ミュート: ボタンはミュートしてもしなくても、どの言語でも同じ位置・幅（324, 22, 220×56）", same);
+        expect("ミュート: ボタンはミュートしてもしなくても同じ位置・幅（220×56、日本語・英語・簡体字中国語は 324, 22）", same);
+        expect("ミュート: どの言語でもボタンが「アプリと更新」に届かない", fits);
         double x = 0.0;
         double y = 0.0;
         panel.buttonCenter(PanelAction::MuteToggle, x, y);

@@ -26,6 +26,7 @@ constexpr int kWidth = 1200;
 constexpr int kHeight = 788;
 
 // ---- 見出し（状態ラベルとミュートのボタンは幅を決めてあるので、ミュートしても動かない） ----
+// 見出しが縮めても入らない言語（スペイン語・イタリア語）だけ、2 つとも見出しの後ろへずらす（drawHeader）
 constexpr Rect kChipRect {140, 28, 168, 44};
 constexpr Rect kMuteRect {324, 22, 220, 56};
 constexpr Rect kAppsRect {964, 22, 208, 56};
@@ -1208,8 +1209,13 @@ void MicPanel::drawHeader(const frame_ui::Canvas& ui, const UiText& t, const Pan
     cairo_t* cr = ui.cr;
     const MicState& state = model.state;
     const double titleSize = ui.fit(t.title, frame_ui::kTitleSize, 22, kChipRect.x - frame_ui::kPanelPadX - 12, true);
-    ui.text(frame_ui::kPanelPadX, frame_ui::centerBaseline(24, frame_ui::kHeaderH, titleSize), t.title, titleSize,
-            rgb(kText), true);
+    const double titleW = ui.text(frame_ui::kPanelPadX, frame_ui::centerBaseline(24, frame_ui::kHeaderH, titleSize), t.title,
+                                  titleSize, rgb(kText), true);
+    // 一番小さくしても入らない見出し（Micrófono・Microfono）は、状態ラベルとミュートのボタンを見出しの後ろ（間 12）へずらす。
+    // 入る言語では 0 なので、日本語・英語・簡体字中国語などは今までと同じ位置
+    const double shift = std::max(0.0, frame_ui::kPanelPadX + titleW + 12 - kChipRect.x);
+    const Rect chipRect {kChipRect.x + shift, kChipRect.y, kChipRect.w, kChipRect.h};
+    const Rect muteRect {kMuteRect.x + shift, kMuteRect.y, kMuteRect.w, kMuteRect.h};
 
     // 状態ラベル（幅 168 で固定。ミュート中は赤い地にマイクに斜線の絵、使用中は緑の ●、未使用・読み込み中は灰の ○）
     const bool muted = state.muteKnown && state.muted;
@@ -1235,13 +1241,13 @@ void MicPanel::drawHeader(const frame_ui::Canvas& ui, const UiText& t, const Pan
     } else {
         label = t.micIdle;
     }
-    fillRounded(cr, kChipRect, kChipRect.h / 2, fill);
+    fillRounded(cr, chipRect, chipRect.h / 2, fill);
     const double markW = mark == 2 ? 20 : (mark == 3 ? 0 : 12);
     const double gap = markW > 0 ? 8 : 0;
-    const double size = ui.fit(label, frame_ui::kControlSize, 13, kChipRect.w - 32 - markW - gap, true);
+    const double size = ui.fit(label, frame_ui::kControlSize, 13, chipRect.w - 32 - markW - gap, true);
     const double textW = ui.measure(label, size, true);
-    const double left = kChipRect.x + (kChipRect.w - markW - gap - textW) / 2;
-    const double cy = kChipRect.y + kChipRect.h / 2;
+    const double left = chipRect.x + (chipRect.w - markW - gap - textW) / 2;
+    const double cy = chipRect.y + chipRect.h / 2;
     if (mark == 1) {
         fillCircle(cr, left + 6, cy, 6, fg);
     } else if (mark == 0) {
@@ -1253,20 +1259,20 @@ void MicPanel::drawHeader(const frame_ui::Canvas& ui, const UiText& t, const Pan
     } else if (mark == 2) {
         drawMicIcon(cr, left, cy - 10, 20, fg, true);
     }
-    ui.text(left + markW + gap, frame_ui::centerBaseline(kChipRect.y, kChipRect.h, size), label, size, rgb(fg), true);
+    ui.text(left + markW + gap, frame_ui::centerBaseline(chipRect.y, chipRect.h, size), label, size, rgb(fg), true);
 
     // ミュートする / ミュートを解除（幅 220 で固定。読めていない間は押せない）
     const bool canMute = state.muteKnown;
-    const Rect muteHit = frame_ui::drawButton(ui, kMuteRect, "", frame_ui::ButtonKind::Normal, canMute);
+    const Rect muteHit = frame_ui::drawButton(ui, muteRect, "", frame_ui::ButtonKind::Normal, canMute);
     withAlpha(cr, canMute ? 1.0 : frame_ui::kDisabledAlpha, [&] {
         const std::string text = muted ? t.unmute : t.mute;
         const double iconW = muted ? 0 : 20;
         const double iconGap = muted ? 0 : 8;
-        const double textSize = ui.fit(text, frame_ui::kControlSize, 13, kMuteRect.w - 28 - iconW - iconGap, true);
+        const double textSize = ui.fit(text, frame_ui::kControlSize, 13, muteRect.w - 28 - iconW - iconGap, true);
         const double w = iconW + iconGap + ui.measure(text, textSize, true);
-        const double x = kMuteRect.x + (kMuteRect.w - w) / 2;
-        if (!muted) drawMicIcon(cr, x, kMuteRect.y + kMuteRect.h / 2 - 10, 20, kText, true);
-        ui.text(x + iconW + iconGap, frame_ui::centerBaseline(kMuteRect.y, kMuteRect.h, textSize), text, textSize,
+        const double x = muteRect.x + (muteRect.w - w) / 2;
+        if (!muted) drawMicIcon(cr, x, muteRect.y + muteRect.h / 2 - 10, 20, kText, true);
+        ui.text(x + iconW + iconGap, frame_ui::centerBaseline(muteRect.y, muteRect.h, textSize), text, textSize,
                 rgb(kText), true);
     });
     addButton({PanelAction::MuteToggle}, muteHit);
