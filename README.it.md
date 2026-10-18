@@ -108,7 +108,7 @@ Per rimuoverlo: `./install.sh --uninstall`, poi riavvia il visore per tornare al
     - Se dice «This version can't be installed from here» (la versione non ha `SHA256SUMS` o non ha un pacchetto), aggiorna a mano come in Installazione; il riquadro mostra la pagina della versione.
     - Se l'aggiornamento fallisce, il riquadro prende un bordo rosso, dice perché e che non è stato cambiato nulla, e offre **Riprova** e **Chiudi**. Se fallisce solo il controllo (per esempio senza rete), diventa rosso solo il testo e **Controlla ora** resta.
     - **Cerca aggiornamenti** acceso / spento: spento ferma il controllo quotidiano e il recupero dell'elenco delle app (vedi Privacy).
-    - **App di supporto** mostra frame-aux-shortcuts (cambia il muto del microfono con il tasto aux) con **Installa** se manca. «App Frame di sasaken@» apre l'elenco completo. **Installa** e **Apri il programma di installazione** mostrano prima il comando esatto; **Apri in Konsole** lo esegue poi in Konsole, dove il programma mostra l'avanzamento. Niente sudo; tutto va nella cartella home.
+    - **App di supporto** mostra frame-aux-shortcuts (cambia il muto del microfono con il tasto aux) con **Installa** se manca. «App Frame di sasaken@» apre l'elenco completo. **Installa** e **Apri il programma** mostrano prima il comando esatto; **Apri in Konsole** lo esegue poi in Konsole, dove il programma mostra l'avanzamento. Niente sudo; tutto va nella cartella home.
 
 Le impostazioni sono disponibili anche da SSH:
 

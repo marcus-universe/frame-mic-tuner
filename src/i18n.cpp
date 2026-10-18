@@ -308,7 +308,7 @@ const UiText kSimplifiedChinese = {
 
 const UiText kGerman = {
     // Kopf
-    "Mikrofon", "In Gebrauch", "Nicht in Gebrauch", "Stumm", "Laden…", "Unbekannt", "Stummschalten", "Stummschaltung aus",
+    "Mikrofon", "In Gebrauch", "Ungenutzt", "Stumm", "Laden…", "Unbekannt", "Stummschalten", "Stummschaltung aus",
     "Apps & Updates", "Mikrofoneinstellungen",
     // Ausgang und Mikrofon
     "Ausgang", "Mikrofon", "%d", "Frame-Lautsprecher", "Lautsprecher", "Frame-Mikrofon", "Eingebaut", "Mikrofon von %s",
@@ -324,7 +324,7 @@ const UiText kGerman = {
     "%s angeschlossen, also gilt die gespeicherte Einstellung", "Rückgängig",
     // Feinjustierung
     "Echofilter", "Entfernt Lautsprecherklang", "Rauschfilter", "Schneidet auch leise Mundgeräusche", "Ein", "Aus",
-    "Strenge", "Niedriger lässt mehr durch", "Nachklang", "Ton nach dem Sprechen", "Wirkt nicht, solange aus", "Standard",
+    "Strenge", "Tiefer lässt mehr durch", "Nachklang", "Ton nach dem Sprechen", "Wirkt nicht, solange aus", "Standard",
     "Standard: 23 % · 500 ms (SteamOS)",
     // Externes Mikrofon
     "Gerade wird %s benutzt",
@@ -357,7 +357,7 @@ const UiText kGerman = {
     "\"Hier wiedergeben\" wechselt denselben Ausgang wie die Audioeinstellung von SteamVR. Lange Listen mit dem Stick oder durch Ziehen scrollen",
     // Mikrofon
     "Mikrofon wählen", "Echofilter und Rauschfilter gelten nur für das eingebaute Frame-Mikrofon",
-    "Echofilter und Rauschfilter sind aktiv", "Keine Verarbeitung (direkt zu Apps)", "Dieses Mikrofon benutzen",
+    "Echofilter und Rauschfilter sind aktiv", "Keine Verarbeitung (direkt zu Apps)", "Mikrofon nutzen",
     // Apps
     "Diese App", "Schaltet Echofilter und Rauschfilter des Mikrofons um",
     "Prüft beim Start und einmal am Tag auf GitHub nach einer neuen Version", "Prüft nicht von selbst. „Jetzt prüfen“ benutzen",
@@ -367,7 +367,7 @@ const UiText kGerman = {
     "%s ist installiert. Beenden und neu starten, um sie zu nutzen",
     "Wenn sich auch das WirePlumber-Skript geändert hat, das Headset neu starten (siehe ~/.cache/frame-mic-tuner/update.log)",
     "Release-Seite: ",
-    "Begleit-Apps", "Nur die Apps, die diese App benutzt", "Schaltet die Stummschaltung mit der Aux-Taste um",
+    "Begleit-Apps", "Nur die Apps, die diese App benutzt", "Stummschaltung per Aux-Taste umschalten",
     "Frame-Apps von sasaken@", "%2$d von %1$d nicht installiert", "Alle %d sind installiert",
     "Installieren", "Läuft", "Installiert", "Läuft in Konsole…", "Von dieser App benutzt",
     "Beim Installieren öffnet sich das Installationsprogramm in Konsole. Kein sudo; alles landet im Home-Ordner",
@@ -403,8 +403,8 @@ const UiText kFrench = {
     "Les réglages fins sont utilisés pour l'instant",
     "%s est branché, donc son réglage enregistré est actif", "Annuler",
     // Réglage fin
-    "Annulation d'écho", "Retire le son des haut-parleurs", "Filtre de bruit", "Coupe aussi les sons de bouche faibles", "Marche", "Arrêt",
-    "Sévérité", "Plus bas laisse passer plus", "Tenue", "Son gardé après la voix", "Sans effet tant que c'est arrêté", "Défaut",
+    "Annulation d'écho", "Retire le son des haut-parleurs", "Filtre de bruit", "Coupe aussi les sons de bouche faibles", "Oui", "Non",
+    "Sévérité", "Plus bas, plus ça passe", "Tenue", "Son gardé après la voix", "Sans effet si désactivé", "Défaut",
     "Défaut : 23 % · 500 ms (SteamOS)",
     // Micro externe
     "Utilisation de %s",
@@ -448,7 +448,7 @@ const UiText kFrench = {
     "%s est installé. Quitte et relance l'app pour l'utiliser",
     "Si le script WirePlumber a aussi changé, redémarre le casque (voir ~/.cache/frame-mic-tuner/update.log)",
     "Page de version : ",
-    "Apps associées", "Seulement les apps que celle-ci utilise", "Bascule la sourdine du micro avec le bouton aux",
+    "Apps associées", "Seulement les apps que celle-ci utilise", "Sourdine du micro au bouton aux",
     "Apps Frame de sasaken@", "%2$d sur %1$d non installées", "Les %d sont installées",
     "Installer", "En cours", "Installée", "En cours dans Konsole…", "Utilisée par cette app",
     "L'installation ouvre l'installateur dans Konsole. Pas de sudo ; tout va dans le dossier personnel",
@@ -486,7 +486,7 @@ const UiText kSpanish = {
     // Ajuste fino
     // オン・オフは幅 180 の切り替え（新しい版の確認・SteamVR と一緒に起動）にも入るので短く（札の「: sí / no」と同じ）
     "Cancelación de eco", "Quita el sonido del altavoz", "Filtro de ruido", "También corta sonidos bajos de la boca", "Sí", "No",
-    "Sensibilidad", "Más bajo deja pasar más", "Retención", "Sonido tras hablar", "No hace nada mientras está apagado", "Predeterminado",
+    "Sensibilidad", "Más bajo deja pasar más", "Retención", "Sonido tras hablar", "No actúa si está apagado", "Predeterminado",
     "Predeterminado: 23 % · 500 ms (SteamOS)",
     // Micrófono externo
     "Ahora se usa %s",
@@ -529,7 +529,7 @@ const UiText kSpanish = {
     "%s está instalada. Sal y vuelve a abrir la app para usarla",
     "Si el script de WirePlumber también cambió, reinicia el visor (mira ~/.cache/frame-mic-tuner/update.log)",
     "Página de la versión: ",
-    "Apps de apoyo", "Solo las apps que usa esta", "Cambia el silencio del micrófono con el botón aux",
+    "Apps de apoyo", "Solo las apps que usa esta", "Cambia el silencio con el botón aux",
     "Apps de Frame de sasaken@", "%2$d de %1$d sin instalar", "Las %d están instaladas",
     "Instalar", "En marcha", "Instalada", "En marcha en Konsole…", "La usa esta app",
     "Al instalar se abre el instalador en Konsole. Sin sudo; todo va a la carpeta personal",
@@ -567,7 +567,7 @@ const UiText kItalian = {
     // Regolazione fine
     // オン・オフは幅 180 の切り替え（新しい版の確認・SteamVR と一緒に起動）にも入るので短く（札の「: sì / no」と同じ）
     "Cancellazione eco", "Toglie il suono degli altoparlanti", "Filtro rumore", "Taglia anche i suoni bassi della bocca", "Sì", "No",
-    "Severità", "Più basso fa passare di più", "Tenuta", "Suono tenuto dopo la voce", "Non ha effetto se spento", "Predefinito",
+    "Severità", "Più basso, più passa", "Tenuta", "Coda dopo il parlato", "Non ha effetto se spento", "Predefinito",
     "Predefinito: 23% · 500 ms (SteamOS)",
     // Microfono esterno
     "Ora si usa %s",
@@ -610,13 +610,13 @@ const UiText kItalian = {
     "%s è installata. Esci e riavvia l'app per usarla",
     "Se è cambiato anche lo script di WirePlumber, riavvia il visore (vedi ~/.cache/frame-mic-tuner/update.log)",
     "Pagina della versione: ",
-    "App di supporto", "Solo le app che questa usa", "Cambia il muto del microfono con il tasto aux",
+    "App di supporto", "Solo le app che questa usa", "Cambia il muto con il tasto aux",
     "App Frame di sasaken@", "%2$d di %1$d non installate", "Tutte le %d sono installate",
-    "Installa", "In esecuzione", "Installata", "In esecuzione in Konsole…", "Usata da questa app",
+    "Installa", "In esecuzione", "Installata", "In corso in Konsole…", "Usata da questa app",
     "L'installazione apre il programma in Konsole. Niente sudo; tutto va nella cartella home",
     "Installa, aggiorna e rimuovi nel programma in Konsole",
     "Con il controllo attivo, questo elenco arriva da frame.sasaken1102s.net (al massimo ogni ora; altrimenti l'ultimo o quello incluso)",
-    "Apri il programma di installazione",
+    "Apri il programma",
     "Installa %s", "Apri il programma di installazione", "Konsole si apre ed esegue questo comando",
     "Konsole mostra l'avanzamento (rispondi lì alle domande)",
     "Nel menu scegli per numero le app da installare, aggiornare o rimuovere",
