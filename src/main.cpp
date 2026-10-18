@@ -211,7 +211,7 @@ void printUsage() {
         "                        installed/checkfailed/installfailed）\n"
         "      --preview-update-confirm  「更新する」を確認の表示にする（--fake-update available と組み合わせる）\n"
         "      --preview-pressed earphone|speaker|record|mute|apps  押している間の見た目\n"
-        "      --preview-language-menu  言語の一覧（旗と言語の名前）を開いた見た目\n"
+        "      --preview-language-menu  言語の一覧を開いた見た目\n"
         "      --fake-ns-vad N / --fake-ns-grace N  ダミーのノイズ除去の強さ（既定 23 / 500）\n"
         "      --preview-drag-vad N / --preview-drag-grace N  そのバーを N までドラッグしている見た目\n"
         "      --fake-output speaker|earphones  今の音の出口（Frame のスピーカー / AB13X USB Audio）\n"
